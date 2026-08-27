@@ -1,0 +1,144 @@
+/**
+ * 成片路由：成片 CRUD、成片-素材关联（素材使用次数由此累计）
+ */
+import { Router } from 'express';
+import { db, nextProductionCode } from '../lib/db.js';
+
+export const productionsRouter = Router();
+
+// ---- 列表 ----
+/** GET /api/productions - 成片列表（含素材数量与关联摘要） */
+productionsRouter.get('/', (req, res) => {
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  const where = search ? `WHERE p.title LIKE ? OR p.code LIKE ?` : '';
+  const params = search ? [`%${search}%`, `%${search}%`] : [];
+  const items = db
+    .prepare(
+      `SELECT p.*,
+        (SELECT COUNT(*) FROM production_assets pa WHERE pa.production_id = p.id) AS assetCount
+       FROM productions p
+       ${where}
+       ORDER BY p.created_at DESC`,
+    )
+    .all(...params) as Array<Record<string, unknown>>;
+  res.json(items);
+});
+
+// ---- 创建 ----
+/** POST /api/productions - 新建成片 */
+productionsRouter.post('/', (req, res) => {
+  const { title, duration, description, coverPath } = (req.body ?? {}) as {
+    title?: string;
+    duration?: number | null;
+    description?: string;
+    coverPath?: string | null;
+  };
+  if (!title?.trim()) {
+    res.status(400).json({ error: '成片标题不能为空' });
+    return;
+  }
+  const code = nextProductionCode();
+  const info = db
+    .prepare(
+      `INSERT INTO productions (code, title, duration, description, cover_path)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run(code, title.trim(), duration ?? null, description ?? null, coverPath ?? null);
+  res.status(201).json(db.prepare(`SELECT * FROM productions WHERE id = ?`).get(info.lastInsertRowid));
+});
+
+// ---- 详情 ----
+/** GET /api/productions/:id - 成片详情（含引用素材列表） */
+productionsRouter.get('/:id', (req, res) => {
+  const p = db.prepare(`SELECT * FROM productions WHERE id = ?`).get(Number(req.params.id));
+  if (!p) {
+    res.status(404).json({ error: '成片不存在' });
+    return;
+  }
+  const assets = db
+    .prepare(
+      `SELECT pa.id AS relation_id, pa.note, pa.created_at AS used_at,
+              a.id, a.code, a.filename, a.duration, a.thumbnail_path
+       FROM production_assets pa
+       JOIN assets a ON a.id = pa.asset_id
+       WHERE pa.production_id = ?
+       ORDER BY pa.created_at`,
+    )
+    .all(Number(req.params.id));
+  res.json({ ...p, assets });
+});
+
+// ---- 更新 ----
+/** PATCH /api/productions/:id - 更新成片信息 */
+productionsRouter.patch('/:id', (req, res) => {
+  const { title, duration, description, coverPath, publishStatus } = (req.body ?? {}) as {
+    title?: string;
+    duration?: number | null;
+    description?: string;
+    coverPath?: string | null;
+    publishStatus?: string;
+  };
+  const cur = db.prepare(`SELECT * FROM productions WHERE id = ?`).get(Number(req.params.id));
+  if (!cur) {
+    res.status(404).json({ error: '成片不存在' });
+    return;
+  }
+  db.prepare(
+    `UPDATE productions SET
+       title = COALESCE(?, title),
+       duration = COALESCE(?, duration),
+       description = COALESCE(?, description),
+       cover_path = COALESCE(?, cover_path),
+       publish_status = COALESCE(?, publish_status),
+       updated_at = datetime('now')
+     WHERE id = ?`,
+  ).run(
+    title?.trim() ?? null,
+    duration === undefined ? null : duration,
+    description ?? null,
+    coverPath ?? null,
+    publishStatus ?? null,
+    Number(req.params.id),
+  );
+  res.json(db.prepare(`SELECT * FROM productions WHERE id = ?`).get(Number(req.params.id)));
+});
+
+// ---- 删除 ----
+/** DELETE /api/productions/:id - 删除成片（关联记录级联删除，素材使用次数随之减少） */
+productionsRouter.delete('/:id', (req, res) => {
+  const info = db.prepare(`DELETE FROM productions WHERE id = ?`).run(Number(req.params.id));
+  res.status(info.changes > 0 ? 200 : 404).json(info.changes > 0 ? { ok: true } : { error: '成片不存在' });
+});
+
+// ---- 素材关联 ----
+/** POST /api/productions/:id/assets - 添加素材到成片（素材使用次数 +1） */
+productionsRouter.post('/:id/assets', (req, res) => {
+  const { assetIds, note } = (req.body ?? {}) as { assetIds?: number[]; note?: string };
+  const pid = Number(req.params.id);
+  const exists = db.prepare(`SELECT id FROM productions WHERE id = ?`).get(pid);
+  if (!exists) {
+    res.status(404).json({ error: '成片不存在' });
+    return;
+  }
+  if (!Array.isArray(assetIds) || assetIds.length === 0) {
+    res.status(400).json({ error: '请选择要添加的素材' });
+    return;
+  }
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO production_assets (production_id, asset_id, note) VALUES (?, ?, ?)`,
+  );
+  let added = 0;
+  for (const aid of [...new Set(assetIds)]) {
+    const r = insert.run(pid, Number(aid), note ?? null);
+    added += Number(r.changes);
+  }
+  res.status(201).json({ added, message: `已添加 ${added} 个素材引用` });
+});
+
+/** DELETE /api/productions/:id/assets/:relationId - 移除素材引用（使用次数 -1） */
+productionsRouter.delete('/:id/assets/:relationId', (req, res) => {
+  const info = db
+    .prepare(`DELETE FROM production_assets WHERE id = ? AND production_id = ?`)
+    .run(Number(req.params.relationId), Number(req.params.id));
+  res.status(info.changes > 0 ? 200 : 404).json(info.changes > 0 ? { ok: true } : { error: '关联不存在' });
+});

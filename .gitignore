@@ -1,0 +1,25 @@
+# 依赖
+node_modules/
+dist/
+build/
+
+# 运行时数据（数据库、上传文件、缩略图、扫描缓存）
+server/data/
+*.db
+*.db-journal
+*.sqlite
+
+# 环境配置
+.env
+.env.local
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
+
+# 参考图片等临时文件
+.tmp_ref/

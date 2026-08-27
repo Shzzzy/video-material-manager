@@ -1,0 +1,18 @@
+{
+  "name": "creative-asset-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "创意素材工作台 - 素材自动分类与使用次数追踪",
+  "scripts": {
+    "dev": "concurrently -n server,client -c green,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

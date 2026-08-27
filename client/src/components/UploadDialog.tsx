@@ -1,5 +1,5 @@
 /** 导入素材对话框：浏览器上传（带进度） / 服务器文件夹扫描（SSE 进度） */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, FileUp, FolderSearch, Loader2, Tag, XCircle } from 'lucide-react';
 import { Modal } from './Modal';
 import { BatchTagModal } from './BatchTagModal';
@@ -18,7 +18,7 @@ type ScanProgress = {
 };
 
 export function UploadDialog() {
-  const { uploadOpen, setUploadOpen, bumpAssets, reloadCategories } = useStore();
+  const { uploadOpen, setUploadOpen, uploadMode, bumpAssets, reloadCategories } = useStore();
   const [mode, setMode] = useState<'upload' | 'scan'>('upload');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -32,6 +32,11 @@ export function UploadDialog() {
   const [scanning, setScanning] = useState(false);
   const [scanProg, setScanProg] = useState<ScanProgress | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 外部（顶栏按钮）指定初始模式时同步
+  useEffect(() => {
+    if (uploadOpen) setMode(uploadMode);
+  }, [uploadOpen, uploadMode]);
 
   const close = () => {
     if (uploading || scanning) return;

@@ -5,7 +5,7 @@ import { ChevronDown, FolderTree, Plus, Sparkles } from 'lucide-react';
 import { useStore } from '../../store';
 
 export function Sidebar() {
-  const { categories, setUploadOpen, assetTagIds, setAssetTagIds } = useStore();
+  const { categories, setUploadOpen, setUploadMode, assetTagIds, setAssetTagIds } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
@@ -116,7 +116,10 @@ export function Sidebar() {
       {/* 底部：AI 能力入口 */}
       <div className="border-t border-ink-900/6 p-3">
         <button
-          onClick={() => setUploadOpen(true)}
+          onClick={() => {
+            setUploadMode('upload');
+            setUploadOpen(true);
+          }}
           className="flex w-full items-center gap-2 rounded-lg bg-forest-800 px-3 py-2 text-[12px] font-medium text-cream-100 shadow-card transition-all duration-150 hover:bg-forest-700 hover:shadow-card-hover active:scale-[0.98]"
         >
           <Sparkles size={13} />

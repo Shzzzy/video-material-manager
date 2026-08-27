@@ -31,6 +31,7 @@ export function AssetsPage() {
   const {
     assetsVersion,
     setUploadOpen,
+    setUploadMode,
     openAsset,
     assetSearch,
     assetTagIds,
@@ -127,14 +128,20 @@ export function AssetsPage() {
         {!hasFilter && !assetStatus && (
           <div className="mt-6 flex gap-3">
             <button
-              onClick={() => setUploadOpen(true)}
+              onClick={() => {
+                setUploadMode('upload');
+                setUploadOpen(true);
+              }}
               className="flex items-center gap-1.5 rounded-xl bg-forest-700 px-5 py-2.5 text-[13px] font-medium text-cream-50 shadow-card transition-all hover:bg-forest-600 hover:shadow-card-hover active:scale-[0.98]"
             >
               <UploadCloud size={15} />
               上传素材
             </button>
             <button
-              onClick={() => setUploadOpen(true)}
+              onClick={() => {
+                setUploadMode('scan');
+                setUploadOpen(true);
+              }}
               className="flex items-center gap-1.5 rounded-xl border border-ink-900/10 bg-cream-50 px-5 py-2.5 text-[13px] font-medium text-ink-700 shadow-card transition-all hover:border-ink-900/20 active:scale-[0.98]"
             >
               <FolderOpen size={15} />

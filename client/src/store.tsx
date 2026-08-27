@@ -23,6 +23,10 @@ interface StoreState {
   setThemeDialogOpen: (v: boolean) => void;
   /** 上传/扫描对话框 */
   uploadOpen: boolean;
+  /** 导入对话框初始模式：upload 上传 / scan 扫描文件夹 */
+  uploadMode: 'upload' | 'scan';
+  setUploadOpen: (v: boolean) => void;
+  setUploadMode: (v: 'upload' | 'scan') => void;
   /** 素材详情抽屉 */
   assetDrawerId: number | null;
   /** 成片详情抽屉 */
@@ -39,7 +43,6 @@ interface StoreState {
   setAssetStatus: (v: 'new' | 'organized' | 'used' | null) => void;
   reloadCategories: () => Promise<void>;
   reloadAdapters: () => Promise<void>;
-  setUploadOpen: (v: boolean) => void;
   openAsset: (id: number) => void;
   openProduction: (id: number) => void;
   closeDrawer: () => void;
@@ -54,6 +57,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<string>(() => loadTheme());
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'upload' | 'scan'>('upload');
   const [assetDrawerId, setAssetDrawerId] = useState<number | null>(null);
   const [productionDrawerId, setProductionDrawerId] = useState<number | null>(null);
   const [assetsVersion, setAssetsVersion] = useState(0);
@@ -160,7 +164,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setAssetStatus,
         reloadCategories,
         reloadAdapters,
+        uploadMode,
         setUploadOpen,
+        setUploadMode,
         openAsset: setAssetDrawerId,
         openProduction: setProductionDrawerId,
         closeDrawer: () => {

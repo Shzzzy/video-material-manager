@@ -21,9 +21,7 @@ export function TopBar() {
         ? '使用记录'
         : location.pathname === '/tags'
           ? '标签管理'
-          : location.pathname === '/team'
-            ? '团队同步'
-            : '素材库';
+          : '素材库';
 
   // 仅素材库页面展示搜索与黄金3秒工具
   const showAssetTools = location.pathname === '/' || location.pathname === '/assets';

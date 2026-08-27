@@ -7,7 +7,6 @@ import { AssetsPage } from './pages/AssetsPage';
 import { ProductionsPage } from './pages/ProductionsPage';
 import { UsagePage } from './pages/UsagePage';
 import { TagsPage } from './pages/TagsPage';
-import { TeamPage } from './pages/TeamPage';
 import { UploadDialog } from './components/UploadDialog';
 import { AssetDrawer } from './components/AssetDrawer';
 import { ProductionDrawer } from './components/ProductionDrawer';
@@ -31,7 +30,6 @@ export default function App() {
               <Route path="/productions" element={<ProductionsPage />} />
               <Route path="/usage" element={<UsagePage />} />
               <Route path="/tags" element={<TagsPage />} />
-              <Route path="/team" element={<TeamPage />} />
             </Routes>
           </main>
         </div>

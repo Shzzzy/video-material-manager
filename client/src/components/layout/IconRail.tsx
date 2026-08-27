@@ -1,20 +1,12 @@
 /** 最左极窄图标导航栏：深色，品牌 Logo + 各板块入口 */
 import { NavLink } from 'react-router-dom';
-import {
-  Clapperboard,
-  Film,
-  History,
-  Layers,
-  Settings,
-  Users,
-} from 'lucide-react';
+import { Clapperboard, Film, History, Layers, Settings } from 'lucide-react';
 
 const items = [
   { to: '/assets', icon: Film, label: '素材库' },
   { to: '/productions', icon: Clapperboard, label: '成片库' },
   { to: '/usage', icon: History, label: '使用记录' },
   { to: '/tags', icon: Layers, label: '标签管理' },
-  { to: '/team', icon: Users, label: '团队同步' },
 ];
 
 export function IconRail() {

@@ -72,7 +72,7 @@ creative-asset-workspace/
 ├── client/                 # React 前端
 │   └── src/
 │       ├── components/     # 布局、卡片、抽屉、对话框
-│       ├── pages/          # 素材库 / 成片库 / 使用记录 / 标签管理 / 团队同步
+│       ├── pages/          # 素材库 / 成片库 / 使用记录 / 标签管理
 │       ├── api.ts          # API 客户端
 │       └── store.tsx       # 全局状态
 ├── server/                 # Express 后端
@@ -108,5 +108,4 @@ creative-asset-workspace/
 - [x] M2 成片库 + 素材关联 + 使用次数统计 + 使用记录
 - [x] M3 搜索筛选 + 统计概览 + 空状态引导
 - [ ] M4 适配器接入：AI 分类 / 视频发布 / AI 视频制作（待接口文档）
-- [ ] M5 团队同步（第二阶段）
-- [ ] M6 多用户与权限、对象存储扩展
+- [ ] M5 多用户与权限、对象存储扩展

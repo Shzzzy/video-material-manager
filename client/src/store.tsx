@@ -9,17 +9,17 @@ import {
   type ReactNode,
 } from 'react';
 import { api } from './api';
-import { applyTheme, DEFAULT_THEME, loadTheme, type ThemeId } from './themes';
+import { applyTheme, AUTO_THEME, DEFAULT_THEME, loadTheme, saveTheme } from './themes';
 import type { AdapterStatus, Category } from './types';
 
 interface StoreState {
   categories: Category[];
   adapters: AdapterStatus[];
-  /** 当前主题 */
-  theme: ThemeId;
+  /** 主题偏好：具体主题 id 或 'auto'（自动跟随时间） */
+  theme: string;
   /** 主题切换面板 */
   themeDialogOpen: boolean;
-  setTheme: (id: ThemeId) => void;
+  setTheme: (id: string) => void;
   setThemeDialogOpen: (v: boolean) => void;
   /** 上传/扫描对话框 */
   uploadOpen: boolean;
@@ -51,7 +51,7 @@ const StoreCtx = createContext<StoreState | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [adapters, setAdapters] = useState<AdapterStatus[]>([]);
-  const [theme, setThemeState] = useState<ThemeId>(() => loadTheme());
+  const [theme, setThemeState] = useState<string>(() => loadTheme());
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [assetDrawerId, setAssetDrawerId] = useState<number | null>(null);
@@ -113,15 +113,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [reloadCategories, reloadAdapters]);
 
   // 主题应用：挂载时恢复持久化主题
-  const setTheme = useCallback((id: ThemeId) => {
-    setThemeState(id);
-    applyTheme(id);
+  const setTheme = useCallback((pref: string) => {
+    setThemeState(pref);
+    applyTheme(pref);
+    saveTheme(pref);
   }, []);
 
   useEffect(() => {
     applyTheme(theme);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 自动跟随时间：每分钟检查一次，时段变化时自动切换主题
+  useEffect(() => {
+    if (theme !== AUTO_THEME) return;
+    const timer = setInterval(() => {
+      applyTheme(AUTO_THEME);
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [theme]);
+
+  // 首次进入 auto 时立即应用当前时段
+  useEffect(() => {
+    if (theme === AUTO_THEME) applyTheme(AUTO_THEME);
+  }, [theme]);
 
   return (
     <StoreCtx.Provider

@@ -187,6 +187,182 @@
   --overlay-soft: rgb(3 5 8 / 0.5);
 }
 
+/* ===== 自动主题：早晨 Morning（晨光暖米） ===== */
+[data-theme="auto-morning"] {
+  --color-cream-50: #fffdf7;
+  --color-cream-100: #faf6ec;
+  --color-cream-200: #f5efe0;
+  --color-cream-300: #ede4cf;
+  --color-cream-400: #dfd3b8;
+
+  --color-forest-50: #eef5ef;
+  --color-forest-100: #dceadf;
+  --color-forest-200: #b8d3c0;
+  --color-forest-300: #8db79a;
+  --color-forest-400: #63967a;
+  --color-forest-500: #42795f;
+  --color-forest-600: #34624c;
+  --color-forest-700: #2a503e;
+  --color-forest-800: #224132;
+  --color-forest-900: #193026;
+  --color-forest-950: #0d1c15;
+
+  --color-ink-900: #232018;
+  --color-ink-700: #4b4637;
+  --color-ink-500: #7d7662;
+  --color-ink-400: #a09a85;
+  --color-ink-300: #c2bca7;
+
+  --color-gold: #c9973a;
+  --color-gold-soft: #f7eeda;
+  --color-gold-ink: #8a6a1d;
+  --color-alert: #c25e4a;
+  --color-alert-soft: #fbf0ea;
+  --color-alert-bright: #e89a86;
+  --color-info: #2d6a8f;
+  --color-info-soft: #e6eef4;
+
+  --shadow-card: 0 1px 2px rgb(64 56 36 / 0.05), 0 4px 16px rgb(64 56 36 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(64 56 36 / 0.08), 0 12px 32px rgb(64 56 36 / 0.12);
+  --shadow-float: 0 8px 24px rgb(34 65 50 / 0.2);
+  --shadow-drawer: -12px 0 40px rgb(35 32 24 / 0.14);
+
+  --overlay: rgb(25 48 38 / 0.4);
+  --overlay-soft: rgb(25 48 38 / 0.3);
+}
+
+/* ===== 自动主题：正午 Noon（清爽亮白） ===== */
+[data-theme="auto-noon"] {
+  --color-cream-50: #ffffff;
+  --color-cream-100: #f6f9fb;
+  --color-cream-200: #edf2f6;
+  --color-cream-300: #e1e9ef;
+  --color-cream-400: #cfdbe4;
+
+  --color-forest-50: #edf5f2;
+  --color-forest-100: #d7eae2;
+  --color-forest-200: #aed3c4;
+  --color-forest-300: #7db6a1;
+  --color-forest-400: #4f957d;
+  --color-forest-500: #2f7a62;
+  --color-forest-600: #25644f;
+  --color-forest-700: #1f5342;
+  --color-forest-800: #1a4536;
+  --color-forest-900: #133327;
+  --color-forest-950: #091c15;
+
+  --color-ink-900: #18242c;
+  --color-ink-700: #3e4e58;
+  --color-ink-500: #6d808c;
+  --color-ink-400: #92a4ae;
+  --color-ink-300: #b9c6cd;
+
+  --color-gold: #c99a3c;
+  --color-gold-soft: #f4ead3;
+  --color-gold-ink: #7d6116;
+  --color-alert: #c25e4a;
+  --color-alert-soft: #fbf0ea;
+  --color-alert-bright: #e89a86;
+  --color-info: #2d6a8f;
+  --color-info-soft: #e6eef4;
+
+  --shadow-card: 0 1px 2px rgb(24 36 44 / 0.05), 0 4px 16px rgb(24 36 44 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(24 36 44 / 0.07), 0 12px 32px rgb(24 36 44 / 0.1);
+  --shadow-float: 0 8px 24px rgb(9 28 21 / 0.2);
+  --shadow-drawer: -12px 0 40px rgb(24 36 44 / 0.13);
+
+  --overlay: rgb(19 51 39 / 0.38);
+  --overlay-soft: rgb(19 51 39 / 0.28);
+}
+
+/* ===== 自动主题：黄昏 Afternoon（落日暖金） ===== */
+[data-theme="auto-afternoon"] {
+  --color-cream-50: #fffaf3;
+  --color-cream-100: #faf1e3;
+  --color-cream-200: #f5e8d2;
+  --color-cream-300: #ecdcbe;
+  --color-cream-400: #ddc9a3;
+
+  --color-forest-50: #f6f1e8;
+  --color-forest-100: #eadfcc;
+  --color-forest-200: #d5bf9c;
+  --color-forest-300: #bb9c6d;
+  --color-forest-400: #a07c48;
+  --color-forest-500: #8a6734;
+  --color-forest-600: #74552b;
+  --color-forest-700: #5f4624;
+  --color-forest-800: #4d391d;
+  --color-forest-900: #3a2a15;
+  --color-forest-950: #241807;
+
+  --color-ink-900: #2e2418;
+  --color-ink-700: #5a4a36;
+  --color-ink-500: #8a7660;
+  --color-ink-400: #ab9882;
+  --color-ink-300: #c9b9a5;
+
+  --color-gold: #c9872f;
+  --color-gold-soft: #f8e8c8;
+  --color-gold-ink: #8a5f14;
+  --color-alert: #bf5a41;
+  --color-alert-soft: #fbece4;
+  --color-alert-bright: #e08a6d;
+  --color-info: #2d6a8f;
+  --color-info-soft: #e9eef1;
+
+  --shadow-card: 0 1px 2px rgb(92 68 30 / 0.05), 0 4px 16px rgb(92 68 30 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(92 68 30 / 0.08), 0 12px 32px rgb(92 68 30 / 0.12);
+  --shadow-float: 0 8px 24px rgb(58 42 21 / 0.22);
+  --shadow-drawer: -12px 0 40px rgb(46 36 24 / 0.14);
+
+  --overlay: rgb(58 42 21 / 0.42);
+  --overlay-soft: rgb(58 42 21 / 0.32);
+}
+
+/* ===== 自动主题：夜晚 Night（深夜蓝黑） ===== */
+[data-theme="auto-night"] {
+  --color-cream-50: #171c23;
+  --color-cream-100: #12161c;
+  --color-cream-200: #0e1217;
+  --color-cream-300: #0b0e12;
+  --color-cream-400: #07090c;
+
+  --color-forest-50: #20262e;
+  --color-forest-100: #28313b;
+  --color-forest-200: #37434f;
+  --color-forest-300: #4c5c6c;
+  --color-forest-400: #647a8d;
+  --color-forest-500: #7ca3bd;
+  --color-forest-600: #648ca9;
+  --color-forest-700: #51748e;
+  --color-forest-800: #425d73;
+  --color-forest-900: #33495c;
+  --color-forest-950: #0b0f14;
+
+  --color-ink-900: #dde4ea;
+  --color-ink-700: #b4bfc9;
+  --color-ink-500: #8796a3;
+  --color-ink-400: #657583;
+  --color-ink-300: #4d5b68;
+
+  --color-gold: #c8a05a;
+  --color-gold-soft: #38301f;
+  --color-gold-ink: #dcbc76;
+  --color-alert: #e08a75;
+  --color-alert-soft: #3a221d;
+  --color-alert-bright: #f0a894;
+  --color-info: #7db8d9;
+  --color-info-soft: #1d2a35;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.45);
+  --shadow-float: 0 8px 24px rgb(0 0 0 / 0.55);
+  --shadow-drawer: -12px 0 40px rgb(0 0 0 / 0.55);
+
+  --overlay: rgb(3 6 10 / 0.6);
+  --overlay-soft: rgb(3 6 10 / 0.5);
+}
+
 /* ===== 全局基础 ===== */
 html,
 body,

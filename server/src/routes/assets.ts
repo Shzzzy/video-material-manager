@@ -18,6 +18,9 @@ import {
   type AssetFilters,
 } from '../services/assetService.js';
 import { scanFolder } from '../services/scanService.js';
+import { requireAdmin, type AuthedRequest } from './auth.js';
+import { notifyChanged } from '../services/realtimeService.js';
+import { canDeleteAsset } from '../services/assetService.js';
 
 export const assetsRouter = Router();
 
@@ -37,6 +40,7 @@ const upload = multer({
 
 /** POST /api/assets/upload - 上传视频素材（支持多文件） */
 assetsRouter.post('/upload', upload.array('files'), async (req, res) => {
+  const member = (req as AuthedRequest).member;
   const files = (req.files as Express.Multer.File[]) ?? [];
   if (files.length === 0) {
     res.status(400).json({ error: '未收到文件' });
@@ -50,7 +54,7 @@ assetsRouter.post('/upload', upload.array('files'), async (req, res) => {
         continue;
       }
       try {
-        const { asset, duplicated } = await registerAsset(f.path, f.originalname, 'upload');
+        const { asset, duplicated } = await registerAsset(f.path, f.originalname, 'upload', member?.id ?? null);
         if (duplicated) {
           // 内容重复：清理刚上传的临时文件，避免磁盘垃圾
           try {
@@ -67,6 +71,7 @@ assetsRouter.post('/upload', upload.array('files'), async (req, res) => {
         });
       }
     }
+    notifyChanged('assets');
     res.json({ results });
   } catch (e) {
     res.status(500).json({ error: e instanceof Error ? e.message : '上传失败' });
@@ -74,8 +79,8 @@ assetsRouter.post('/upload', upload.array('files'), async (req, res) => {
 });
 
 // ---- 文件夹扫描（SSE 进度推送） ----
-/** POST /api/assets/scan - 扫描服务器本地文件夹 */
-assetsRouter.post('/scan', (req, res) => {
+/** POST /api/assets/scan - 扫描服务器本地文件夹（仅管理员） */
+assetsRouter.post('/scan', requireAdmin, (req, res) => {
   const { folder } = (req.body ?? {}) as { folder?: string };
   if (!folder) {
     res.status(400).json({ error: '请提供要扫描的文件夹路径' });
@@ -91,6 +96,7 @@ assetsRouter.post('/scan', (req, res) => {
 
   scanFolder(folder, (progress) => {
     send(progress);
+    if (progress.phase === 'done') notifyChanged('assets');
     if (progress.phase === 'done' || progress.phase === 'error') {
       res.end();
     }
@@ -112,17 +118,20 @@ assetsRouter.post('/batch/tags', (req, res) => {
     return;
   }
   const count = batchSetTags(assetIds, tagIds ?? []);
+  notifyChanged('assets');
   res.json({ ok: true, affected: count });
 });
 
 /** POST /api/assets/batch/delete - 批量删除素材 */
 assetsRouter.post('/batch/delete', (req, res) => {
+  const member = (req as AuthedRequest).member!;
   const { assetIds } = (req.body ?? {}) as { assetIds?: number[] };
   if (!Array.isArray(assetIds) || assetIds.length === 0) {
     res.status(400).json({ error: '请选择素材' });
     return;
   }
-  const removed = batchDeleteAssets(assetIds);
+  const removed = batchDeleteAssets(assetIds, member.id, member.is_admin === 1);
+  notifyChanged('assets');
   res.json({ ok: true, removed });
 });
 
@@ -168,6 +177,13 @@ assetsRouter.patch('/:id', (req, res) => {
 // ---- 删除 ----
 /** DELETE /api/assets/:id */
 assetsRouter.delete('/:id', (req, res) => {
-  const ok = deleteAsset(Number(req.params.id));
+  const member = (req as AuthedRequest).member!;
+  const id = Number(req.params.id);
+  if (!canDeleteAsset(id, member.id, member.is_admin === 1)) {
+    res.status(403).json({ error: '只能删除自己上传的素材（管理员可删除全部）' });
+    return;
+  }
+  const ok = deleteAsset(id);
+  if (ok) notifyChanged('assets');
   res.status(ok ? 200 : 404).json(ok ? { ok: true } : { error: '素材不存在' });
 });

@@ -8,11 +8,18 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { api } from './api';
+import { api, memberToken, MEMBER_TOKEN_KEY } from './api';
 import { applyTheme, AUTO_THEME, DEFAULT_THEME, loadTheme, saveTheme } from './themes';
 import type { AdapterStatus, Category } from './types';
 
 interface StoreState {
+  /** 当前成员（未加入为 null） */
+  member: { id: number; nickname: string; isAdmin: boolean } | null;
+  /** 管理面板开关 */
+  adminPanelOpen: boolean;
+  setAdminPanelOpen: (v: boolean) => void;
+  /** 刷新成员信息 */
+  refreshMember: () => Promise<void>;
   categories: Category[];
   adapters: AdapterStatus[];
   /** 主题偏好：具体主题 id 或 'auto'（自动跟随时间） */
@@ -52,6 +59,8 @@ interface StoreState {
 const StoreCtx = createContext<StoreState | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const [member, setMember] = useState<{ id: number; nickname: string; isAdmin: boolean } | null>(null);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [adapters, setAdapters] = useState<AdapterStatus[]>([]);
   const [theme, setThemeState] = useState<string>(() => loadTheme());
@@ -96,6 +105,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const reloadCategories = useCallback(async () => {
+    if (!memberToken()) return; // 未加入工作台不请求
     try {
       setCategories(await api.listCategories());
     } catch {
@@ -104,6 +114,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reloadAdapters = useCallback(async () => {
+    if (!memberToken()) return; // 未加入工作台不请求
     try {
       setAdapters(await api.adapters());
     } catch {
@@ -115,6 +126,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void reloadCategories();
     void reloadAdapters();
   }, [reloadCategories, reloadAdapters]);
+
+  const refreshMember = useCallback(async () => {
+    if (!memberToken()) {
+      setMember(null);
+      return;
+    }
+    try {
+      setMember(await api.me());
+    } catch {
+      setMember(null); // 401 时 token 已被清理
+    }
+  }, []);
+
+  // 挂载：校验成员身份
+  useEffect(() => {
+    void refreshMember();
+  }, [refreshMember]);
+
+  // SSE 实时同步：成员操作后自动刷新数据
+  useEffect(() => {
+    if (!memberToken()) return;
+    const es = new EventSource(`/api/auth/events?token=${encodeURIComponent(memberToken() ?? '')}`);
+    es.addEventListener('changed', (e) => {
+      try {
+        const { kind } = JSON.parse((e as MessageEvent).data);
+        if (kind === 'tags') void reloadCategories();
+        setAssetsVersion((v) => v + 1); // 统一刷新列表与统计
+      } catch {
+        /* 忽略 */
+      }
+    });
+    return () => es.close();
+  }, [reloadCategories]);
 
   // 主题应用：挂载时恢复持久化主题
   const setTheme = useCallback((pref: string) => {
@@ -146,6 +190,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   return (
     <StoreCtx.Provider
       value={{
+        member,
+        adminPanelOpen,
+        setAdminPanelOpen,
+        refreshMember,
         categories,
         adapters,
         theme,

@@ -1,10 +1,10 @@
-/** 顶栏：品牌区 + 搜索 + 主操作按钮（全局唯一，筛选状态来自 store） */
+/** 顶栏：品牌区 + 搜索 + 成员标识 + 主操作按钮（全局唯一） */
 import { useLocation } from 'react-router-dom';
-import { FolderSearch, Search, UploadCloud } from 'lucide-react';
+import { FolderSearch, Search, Settings, UploadCloud } from 'lucide-react';
 import { useStore } from '../../store';
 
 export function TopBar() {
-  const { setUploadOpen, setUploadMode, assetSearch, setAssetSearch } = useStore();
+  const { setUploadOpen, setUploadMode, setAdminPanelOpen, assetSearch, setAssetSearch, member } = useStore();
   const location = useLocation();
 
   const pageName =
@@ -43,6 +43,23 @@ export function TopBar() {
           />
         </div>
       )}
+
+      {/* 成员标识 */}
+      <button
+        onClick={() => member?.isAdmin && setAdminPanelOpen(true)}
+        className={`flex h-8.5 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-medium transition-all ${
+          member?.isAdmin
+            ? 'border-gold/40 bg-gold-soft/70 text-gold-ink hover:border-gold/60'
+            : 'border-ink-900/8 bg-cream-200/60 text-ink-500'
+        }`}
+        title={member?.isAdmin ? '管理工作台（核心管理员）' : '当前成员'}
+      >
+        <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-forest-700 text-[10px] font-semibold text-cream-50">
+          {member?.nickname.slice(0, 1)}
+        </span>
+        {member?.nickname}
+        {member?.isAdmin && <Settings size={11} className="opacity-70" />}
+      </button>
 
       {/* 主操作按钮 */}
       <button

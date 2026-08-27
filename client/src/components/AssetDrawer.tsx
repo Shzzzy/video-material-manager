@@ -12,6 +12,7 @@ export function AssetDrawer() {
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     if (!assetDrawerId) {
@@ -53,10 +54,16 @@ export function AssetDrawer() {
 
 
   const remove = async () => {
-    await api.deleteAsset(detail.id);
-    bumpAssets();
-    void reloadCategories();
-    closeDrawer();
+    try {
+      await api.deleteAsset(detail.id);
+      bumpAssets();
+      void reloadCategories();
+      closeDrawer();
+    } catch (e) {
+      // 权限不足等错误：提示并停留
+      setDeleteError(e instanceof Error ? e.message : '删除失败');
+      setConfirmDelete(false);
+    }
   };
 
   return (
@@ -170,7 +177,9 @@ export function AssetDrawer() {
         <div className="flex items-center justify-between border-t border-ink-900/6 px-5 py-3">
           {confirmDelete ? (
             <div className="flex items-center gap-2 text-[12px]">
-              <span className="text-alert">确认删除该素材？</span>
+              <span className="text-alert">
+                {deleteError || '确认删除该素材？'}
+              </span>
               <button
                 onClick={() => void remove()}
                 className="rounded-lg bg-alert px-3 py-1.5 font-medium text-cream-50 transition-all hover:opacity-90"

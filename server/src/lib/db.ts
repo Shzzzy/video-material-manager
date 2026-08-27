@@ -90,13 +90,50 @@ export function initDb(): void {
       note TEXT,                                    -- 使用说明（如：开场 0-8s）
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- 成员（无账户：邀请码 + 昵称进入）
+    CREATE TABLE IF NOT EXISTS members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nickname TEXT NOT NULL,                       -- 昵称（可重复，设备 token 区分）
+      token TEXT NOT NULL UNIQUE,                   -- 设备 token（随机 uuid，浏览器保存）
+      is_admin INTEGER NOT NULL DEFAULT 0,          -- 是否管理员
+      invite_id INTEGER,                            -- 通过哪个邀请码加入（拉黑用）
+      banned INTEGER NOT NULL DEFAULT 0,            -- 是否被拉黑
+      first_seen TEXT NOT NULL DEFAULT (datetime('now')),
+      last_seen TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- 邀请码
+    CREATE TABLE IF NOT EXISTS invites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,                    -- 邀请码（如 CAW-XXXX）
+      note TEXT,                                    -- 备注（发给谁）
+      created_by INTEGER,                           -- 创建人 member_id
+      revoked INTEGER NOT NULL DEFAULT 0,           -- 是否已拉黑
+      used_count INTEGER NOT NULL DEFAULT 0,        -- 已使用次数
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
+
+  // 迁移：历史版本的表补充操作人字段（created_by）
+  migrateColumn('assets', 'created_by', 'INTEGER');
+  migrateColumn('productions', 'created_by', 'INTEGER');
+  migrateColumn('production_assets', 'created_by', 'INTEGER');
 
   // 迁移：移除历史版本的 golden3s 字段（黄金3秒功能已下线）
   const cols = db.prepare(`PRAGMA table_info(assets)`).all() as Array<{ name: string }>;
   if (cols.some((c) => c.name === 'golden3s')) {
     db.exec(`ALTER TABLE assets DROP COLUMN golden3s`);
     console.log('[db] 已迁移：移除 assets.golden3s 字段');
+  }
+}
+
+/** 迁移辅助：为表补列（已存在则跳过） */
+function migrateColumn(table: string, column: string, type: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+    console.log(`[db] 已迁移：${table} 增加 ${column} 列`);
   }
 }
 

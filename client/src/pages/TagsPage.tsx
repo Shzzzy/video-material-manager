@@ -1,6 +1,6 @@
 /** 标签管理页面：自定义分类维度与标签值（拍摄人员/场景/景别/剪辑人员…） */
 import { useState } from 'react';
-import { Layers, Plus, Trash2, X } from 'lucide-react';
+import { Layers, Lock, Plus, Trash2, X } from 'lucide-react';
 import type { Category } from '../types';
 import { api } from '../api';
 import { useStore } from '../store';
@@ -9,7 +9,28 @@ import { Modal } from '../components/Modal';
 const PRESET_COLORS = ['#255C45', '#8a6a1d', '#7b5ea7', '#c25e4a', '#2d6a8f', '#a05e2c', '#5e7f2c', '#8f2c6a'];
 
 export function TagsPage() {
-  const { categories, reloadCategories } = useStore();
+  const { categories, reloadCategories, member } = useStore();
+  const isAdmin = member?.isAdmin === true;
+
+  // 非管理员：标签体系为全局结构，仅管理员可编辑
+  if (!isAdmin) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-forest-800 text-cream-100 shadow-float">
+          <Lock size={26} />
+        </div>
+        <h2 className="mt-5 text-[16px] font-semibold text-ink-900">标签体系由管理员管理</h2>
+        <p className="mt-2 max-w-md text-[12.5px] leading-relaxed text-ink-400">
+          分类维度与标签是团队共用的全局结构，由核心管理员统一维护。
+          <br />
+          你可以在素材上自由使用现有标签，如有新分类需求请联系管理员。
+        </p>
+        <span className="mt-6 rounded-full border border-gold/40 bg-gold-soft px-4 py-1.5 text-[12px] font-medium text-gold-ink">
+          仅管理员可编辑
+        </span>
+      </div>
+    );
+  }
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [addingTagFor, setAddingTagFor] = useState<number | null>(null);

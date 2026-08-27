@@ -20,8 +20,14 @@ export interface AssetRow {
   sha256: string | null;
   thumbnail_path: string | null;
   source: string;
+  created_by: number | null;
   created_at: string;
   updated_at: string;
+}
+
+/** 查询结果扩展：创建人昵称 */
+export interface AssetWithCreator extends AssetRow {
+  creator_name: string | null;
 }
 
 /** 素材入库结果 */
@@ -36,6 +42,7 @@ export async function registerAsset(
   filePath: string,
   filename: string,
   source: 'upload' | 'folder',
+  createdBy: number | null = null,
 ): Promise<RegisterResult> {
   const absPath = filePath.startsWith('/') ? filePath : `${UPLOAD_DIR}/${filePath}`;
 
@@ -62,10 +69,10 @@ export async function registerAsset(
   const code = nextAssetCode();
   const info = db
     .prepare(
-      `INSERT INTO assets (code, filename, file_path, size, duration, width, height, fps, sha256, thumbnail_path, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO assets (code, filename, file_path, size, duration, width, height, fps, sha256, thumbnail_path, source, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(code, filename, absPath, size, meta.duration, meta.width, meta.height, meta.fps, sha256, thumb, source);
+    .run(code, filename, absPath, size, meta.duration, meta.width, meta.height, meta.fps, sha256, thumb, source, createdBy);
   const asset = db.prepare(`SELECT * FROM assets WHERE id = ?`).get(info.lastInsertRowid) as unknown as AssetRow;
   return { asset, duplicated: false };
 }
@@ -124,14 +131,16 @@ export function listAssets(filters: AssetFilters): {
   const items = db
     .prepare(
       `SELECT a.*,
+        m.nickname AS creator_name,
         (SELECT COUNT(*) FROM production_assets pa WHERE pa.asset_id = a.id) AS usageCount
        FROM assets a
+       LEFT JOIN members m ON m.id = a.created_by
        ${whereSql}
        ORDER BY a.created_at DESC
        LIMIT ? OFFSET ?`,
     )
     .all(...params, pageSize, (page - 1) * pageSize) as unknown as Array<
-    AssetRow & { usageCount: number }
+    AssetWithCreator & { usageCount: number }
   >;
 
   // 批量加载每个素材的标签
@@ -247,13 +256,27 @@ export function batchSetTags(assetIds: number[], tagIds: number[]): number {
   return ids.length;
 }
 
-/** 批量删除素材（返回实际删除数量） */
-export function batchDeleteAssets(assetIds: number[]): number {
+/** 批量删除素材（返回实际删除数量；非管理员只能删自己上传的） */
+export function batchDeleteAssets(assetIds: number[], memberId: number | null = null, isAdmin = false): number {
   let removed = 0;
   for (const id of [...new Set(assetIds)]) {
+    const asset = db.prepare(`SELECT * FROM assets WHERE id = ?`).get(id) as AssetRow | undefined;
+    if (!asset) continue;
+    if (!isAdmin && memberId !== null && asset.created_by !== memberId) continue; // 无权限跳过
     if (deleteAsset(id)) removed++;
   }
   return removed;
+}
+
+/** 校验删除权限：非管理员只能删自己上传的素材 */
+export function canDeleteAsset(assetId: number, memberId: number | null, isAdmin: boolean): boolean {
+  if (isAdmin) return true;
+  if (memberId === null) return false;
+  const asset = db.prepare(`SELECT created_by FROM assets WHERE id = ?`).get(assetId) as
+    | { created_by: number | null }
+    | undefined;
+  if (!asset) return false;
+  return asset.created_by === memberId;
 }
 
 /** 校验素材文件是否为受支持的视频扩展名 */

@@ -11,9 +11,25 @@ import type {
   Tag,
 } from './types';
 
+/** 成员 token 存储键 */
+export const MEMBER_TOKEN_KEY = 'caw-member-token';
+
+/** 读取当前成员 token（未加入返回 null） */
+export function memberToken(): string | null {
+  try {
+    return localStorage.getItem(MEMBER_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = memberToken();
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Member-Token': token } : {}),
+    },
     ...options,
   });
   if (!res.ok) {
@@ -23,6 +39,14 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
       if (body?.error) message = body.error;
     } catch {
       /* 忽略解析失败 */
+    }
+    if (res.status === 401) {
+      // 会话失效：清除 token（界面回到加入工作台）
+      try {
+        localStorage.removeItem(MEMBER_TOKEN_KEY);
+      } catch {
+        /* 忽略 */
+      }
     }
     throw new Error(message);
   }
@@ -79,6 +103,8 @@ export const api = {
         for (const f of files) form.append('files', f);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/assets/upload');
+        const token = memberToken();
+        if (token) xhr.setRequestHeader('X-Member-Token', token);
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) onProgress(e.loaded, e.total);
         };
@@ -163,6 +189,38 @@ export const api = {
 
   // ---- 适配器 ----
   adapters: () => request<AdapterStatus[]>('/api/adapters'),
+
+  // ---- 身份与成员 ----
+  /** 加入工作台（邀请码 + 昵称） */
+  joinWorkspace: (code: string, nickname: string) =>
+    request<{ token: string; nickname: string; isAdmin: boolean }>('/api/auth/join', {
+      method: 'POST',
+      body: JSON.stringify({ code, nickname }),
+    }),
+  /** 当前成员信息 */
+  me: () =>
+    request<{ id: number; nickname: string; isAdmin: boolean }>('/api/auth/me'),
+  /** 邀请码列表（管理员） */
+  listInvites: () =>
+    request<Array<{ id: number; code: string; note: string | null; revoked: number; used_count: number; created_at: string }>>('/api/auth/invites'),
+  /** 生成邀请码（管理员） */
+  createInvite: (note?: string) =>
+    request<{ id: number; code: string; note: string | null; revoked: number; used_count: number; created_at: string }>('/api/auth/invites', {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    }),
+  /** 拉黑/恢复邀请码（管理员） */
+  revokeInvite: (id: number, revoked: boolean) =>
+    request<{ ok: boolean }>(`/api/auth/invites/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ revoked }),
+    }),
+  /** 成员列表（管理员） */
+  listMembers: () =>
+    request<Array<{ id: number; nickname: string; is_admin: number; banned: number; last_seen: string; first_seen: string }>>('/api/auth/members'),
+  /** 踢出成员（管理员） */
+  banMember: (id: number) =>
+    request<{ ok: boolean }>(`/api/auth/members/${id}/ban`, { method: 'POST' }),
 };
 
 /** 缩略图 URL（后端静态服务） */

@@ -94,14 +94,16 @@ export function initDb(): void {
   `);
 }
 
-/** 生成素材编号：AS-0001 递增 */
+/** 生成素材编号：AS-0001 递增（基于最大 id，删除后不偏移） */
 export function nextAssetCode(): string {
-  const row = db.prepare(`SELECT COUNT(*) AS n FROM assets`).get() as { n: number };
-  return `AS-${String(row.n + 1).padStart(4, '0')}`;
+  const row = db.prepare(`SELECT COALESCE(MAX(id), 0) + 1 AS n FROM assets`).get() as { n: number };
+  return `AS-${String(row.n).padStart(4, '0')}`;
 }
 
-/** 生成成片编号：PC-0001 递增 */
+/** 生成成片编号：PC-0001 递增（基于最大 id，删除后不偏移） */
 export function nextProductionCode(): string {
-  const row = db.prepare(`SELECT COUNT(*) AS n FROM productions`).get() as { n: number };
-  return `PC-${String(row.n + 1).padStart(4, '0')}`;
+  const row = db.prepare(`SELECT COALESCE(MAX(id), 0) + 1 AS n FROM productions`).get() as {
+    n: number;
+  };
+  return `PC-${String(row.n).padStart(4, '0')}`;
 }

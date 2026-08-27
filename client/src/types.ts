@@ -91,6 +91,7 @@ export interface OverviewStats {
   usageTotal: number;
   golden3sCount: number;
   totalDuration: number;
+  pendingCount: number;
 }
 
 export interface AdapterStatus {

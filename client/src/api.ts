@@ -35,6 +35,7 @@ export const api = {
     search?: string;
     tagIds?: number[];
     golden3sOnly?: boolean;
+    status?: 'new' | 'organized' | 'used';
     page?: number;
     pageSize?: number;
   }) => {
@@ -42,6 +43,7 @@ export const api = {
     if (params.search) q.set('search', params.search);
     if (params.tagIds?.length) q.set('tagIds', params.tagIds.join(','));
     if (params.golden3sOnly) q.set('golden3s', '1');
+    if (params.status) q.set('status', params.status);
     if (params.page) q.set('page', String(params.page));
     if (params.pageSize) q.set('pageSize', String(params.pageSize));
     const qs = q.toString();
@@ -55,6 +57,25 @@ export const api = {
 
   deleteAsset: (id: number) =>
     request<{ ok: boolean }>(`/api/assets/${id}`, { method: 'DELETE' }),
+
+  // ---- 批量操作 ----
+  batchSetTags: (assetIds: number[], tagIds: number[]) =>
+    request<{ ok: boolean; affected: number }>('/api/assets/batch/tags', {
+      method: 'POST',
+      body: JSON.stringify({ assetIds, tagIds }),
+    }),
+
+  batchSetGolden3s: (assetIds: number[], golden3s: boolean) =>
+    request<{ ok: boolean; affected: number }>('/api/assets/batch/golden3s', {
+      method: 'POST',
+      body: JSON.stringify({ assetIds, golden3s }),
+    }),
+
+  batchDeleteAssets: (assetIds: number[]) =>
+    request<{ ok: boolean; removed: number }>('/api/assets/batch/delete', {
+      method: 'POST',
+      body: JSON.stringify({ assetIds }),
+    }),
 
   /** 上传素材（XHR 带进度回调）；duplicated=true 表示内容与已有素材重复（指纹命中） */
   uploadAssets: (files: File[], onProgress: (done: number, total: number) => void) =>

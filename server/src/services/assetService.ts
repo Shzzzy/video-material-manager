@@ -75,6 +75,8 @@ export interface AssetFilters {
   search?: string;      // 编号/文件名/标签 模糊搜索
   tagIds?: number[];    // 标签筛选（多选，命中任一）
   golden3sOnly?: boolean;
+  /** 素材状态：new 待标注 / organized 已整理 / used 已使用（互斥，优先级 used > organized > new） */
+  status?: 'new' | 'organized' | 'used';
   page?: number;
   pageSize?: number;
 }
@@ -84,7 +86,7 @@ export function listAssets(filters: AssetFilters): {
   items: Array<AssetRow & { tags: unknown[]; usageCount: number }>;
   total: number;
 } {
-  const { search, tagIds = [], golden3sOnly, page = 1, pageSize = 60 } = filters;
+  const { search, tagIds = [], golden3sOnly, status, page = 1, pageSize = 60 } = filters;
   const where: string[] = [];
   const params: (string | number)[] = [];
 
@@ -105,6 +107,17 @@ export function listAssets(filters: AssetFilters): {
       SELECT at.asset_id FROM asset_tags at WHERE at.tag_id IN (${tagIds.map(() => '?').join(',')})
     )`);
     params.push(...tagIds);
+  }
+  // 状态筛选：used（被引用过）> organized（已打标/黄金3秒）> new（待标注）
+  if (status === 'used') {
+    where.push(`EXISTS (SELECT 1 FROM production_assets pa WHERE pa.asset_id = a.id)`);
+  } else if (status === 'organized') {
+    where.push(`NOT EXISTS (SELECT 1 FROM production_assets pa WHERE pa.asset_id = a.id)
+      AND (a.golden3s = 1 OR EXISTS (SELECT 1 FROM asset_tags at WHERE at.asset_id = a.id))`);
+  } else if (status === 'new') {
+    where.push(`NOT EXISTS (SELECT 1 FROM production_assets pa WHERE pa.asset_id = a.id)
+      AND a.golden3s = 0
+      AND NOT EXISTS (SELECT 1 FROM asset_tags at WHERE at.asset_id = a.id)`);
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
@@ -230,6 +243,35 @@ export function deleteAsset(id: number): boolean {
     }
   }
   return true;
+}
+
+/** 批量设置素材标签（整体替换：assetTags = tagIds） */
+export function batchSetTags(assetIds: number[], tagIds: number[]): number {
+  const ids = [...new Set(assetIds)];
+  const del = db.prepare(`DELETE FROM asset_tags WHERE asset_id = ?`);
+  const insert = db.prepare(`INSERT OR IGNORE INTO asset_tags (asset_id, tag_id) VALUES (?, ?)`);
+  for (const id of ids) {
+    del.run(id);
+    for (const tagId of [...new Set(tagIds)]) insert.run(id, tagId);
+  }
+  return ids.length;
+}
+
+/** 批量设置黄金3秒标记 */
+export function batchSetGolden3s(assetIds: number[], golden3s: boolean): number {
+  const ids = [...new Set(assetIds)];
+  const stmt = db.prepare(`UPDATE assets SET golden3s = ?, updated_at = datetime('now') WHERE id = ?`);
+  for (const id of ids) stmt.run(golden3s ? 1 : 0, id);
+  return ids.length;
+}
+
+/** 批量删除素材（返回实际删除数量） */
+export function batchDeleteAssets(assetIds: number[]): number {
+  let removed = 0;
+  for (const id of [...new Set(assetIds)]) {
+    if (deleteAsset(id)) removed++;
+  }
+  return removed;
 }
 
 /** 校验素材文件是否为受支持的视频扩展名 */

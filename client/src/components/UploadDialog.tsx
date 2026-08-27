@@ -1,9 +1,11 @@
 /** 导入素材对话框：浏览器上传（带进度） / 服务器文件夹扫描（SSE 进度） */
 import { useCallback, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileUp, FolderSearch, Loader2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileUp, FolderSearch, Loader2, Tag, XCircle } from 'lucide-react';
 import { Modal } from './Modal';
+import { BatchTagModal } from './BatchTagModal';
 import { useStore } from '../store';
 import { api } from '../api';
+import type { Asset } from '../types';
 
 type ScanProgress = {
   phase: 'scanning' | 'processing' | 'done' | 'error';
@@ -23,6 +25,9 @@ export function UploadDialog() {
   const [uploadResults, setUploadResults] = useState<
     Array<{ filename: string; ok: boolean; duplicated?: boolean; msg: string }>
   >([]);
+  /** 本次上传成功入库的新素材（用于一键打标引导） */
+  const [newAssets, setNewAssets] = useState<Asset[]>([]);
+  const [tagGuideOpen, setTagGuideOpen] = useState(false);
   const [scanFolder, setScanFolder] = useState('');
   const [scanning, setScanning] = useState(false);
   const [scanProg, setScanProg] = useState<ScanProgress | null>(null);
@@ -32,6 +37,7 @@ export function UploadDialog() {
     if (uploading || scanning) return;
     setUploadOpen(false);
     setUploadResults([]);
+    setNewAssets([]);
     setScanProg(null);
     setScanFolder('');
     setMode('upload');
@@ -58,6 +64,12 @@ export function UploadDialog() {
                 ? `内容重复，已关联 ${r.asset?.code}（原文件 ${r.asset?.filename}）`
                 : `已入库 ${r.asset?.code}`,
           })),
+        );
+        // 收集本次新入库素材（非重复），用于一键打标引导
+        setNewAssets(
+          results
+            .filter((r) => r.asset && !r.duplicated && !r.error)
+            .map((r) => r.asset as Asset),
         );
         bumpAssets();
         void reloadCategories();
@@ -127,6 +139,7 @@ export function UploadDialog() {
         : 0;
 
   return (
+    <>
     <Modal
       open={uploadOpen}
       onClose={close}
@@ -249,6 +262,25 @@ export function UploadDialog() {
           </div>
         )}
 
+        {/* 上传后打标引导：新素材一键打标 */}
+        {newAssets.length > 0 && !uploading && (
+          <div className="fade-in mt-3 flex items-center gap-2 rounded-xl border border-forest-200 bg-forest-50/70 px-3 py-2.5">
+            <span className="text-[12px] text-forest-800">
+              新入库 <span className="tabular font-semibold">{newAssets.length}</span> 个素材，
+              现在为它们分类打标？
+            </span>
+            <button
+              onClick={() => {
+                setTagGuideOpen(true);
+              }}
+              className="ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-forest-700 px-3 py-1.5 text-[12px] font-medium text-cream-50 shadow-card transition-all hover:bg-forest-600 active:scale-[0.98]"
+            >
+              <Tag size={12} />
+              一键打标
+            </button>
+          </div>
+        )}
+
         {/* 扫描进度 */}
         {scanProg && scanProg.phase !== 'done' && scanProg.phase !== 'error' && (
           <div className="mt-4">
@@ -292,5 +324,15 @@ export function UploadDialog() {
         )}
       </div>
     </Modal>
+
+    {/* 上传后一键打标 */}
+    <BatchTagModal
+      assetIds={newAssets.map((a) => a.id)}
+      assetCodes={newAssets.map((a) => a.code)}
+      open={tagGuideOpen}
+      onClose={() => setTagGuideOpen(false)}
+      onDone={() => setNewAssets([])}
+    />
+    </>
   );
 }

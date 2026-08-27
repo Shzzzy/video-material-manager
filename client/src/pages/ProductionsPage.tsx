@@ -1,19 +1,23 @@
-/** 成片库页面：成片卡片列表 + 新建成片 + 使用排行 */
-import { useEffect, useState } from 'react';
+/** 成片库页面：状态筛选 + 成片列表 + 新建成片 + 使用排行 */
+import { useEffect, useMemo, useState } from 'react';
 import { Clapperboard, Film, Plus, Search, TrendingUp, Trash2 } from 'lucide-react';
 import type { Production } from '../types';
 import { api, formatDate, formatDuration } from '../api';
 import { useStore } from '../store';
 import { Modal } from '../components/Modal';
+import { PRODUCTION_STATUSES, StatusBadge, type ProductionStatusKey } from '../components/productionStatus';
 
 export function ProductionsPage() {
   const { openProduction, bumpAssets, assetsVersion } = useStore();
   const [items, setItems] = useState<Production[]>([]);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ProductionStatusKey | null>(null);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [ranking, setRanking] = useState<Array<{ id: number; code: string; filename: string; thumbnail_path: string | null; usageCount: number }>>([]);
+  const [ranking, setRanking] = useState<
+    Array<{ id: number; code: string; filename: string; thumbnail_path: string | null; usageCount: number }>
+  >([]);
 
   const load = async (q = search) => {
     setItems(await api.listProductions(q));
@@ -21,17 +25,22 @@ export function ProductionsPage() {
 
   useEffect(() => {
     void load();
-    void api.usageLog().then(() => {});
-    void api
-      .overview()
-      .then(() => {});
-    // 拉取使用排行（复用 usage 接口按素材聚合）
+    // 使用排行（按素材聚合使用记录）
     void api.usageLog().then((logs) => {
-      const map = new Map<number, { code: string; filename: string; thumbnail_path: string | null; count: number }>();
+      const map = new Map<
+        number,
+        { code: string; filename: string; thumbnail_path: string | null; count: number }
+      >();
       for (const l of logs) {
         const cur = map.get(l.asset_id);
         if (cur) cur.count++;
-        else map.set(l.asset_id, { code: l.asset_code, filename: l.filename, thumbnail_path: l.thumbnail_path, count: 1 });
+        else
+          map.set(l.asset_id, {
+            code: l.asset_code,
+            filename: l.filename,
+            thumbnail_path: l.thumbnail_path,
+            count: 1,
+          });
       }
       setRanking(
         [...map.entries()]
@@ -42,6 +51,11 @@ export function ProductionsPage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetsVersion]);
+
+  const filtered = useMemo(
+    () => (statusFilter ? items.filter((p) => p.publish_status === statusFilter) : items),
+    [items, statusFilter],
+  );
 
   const create = async () => {
     if (!title.trim()) return;
@@ -61,9 +75,12 @@ export function ProductionsPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
       {/* 头部操作区 */}
-      <div className="mb-5 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3">
         <div className="relative w-72">
-          <Search size={13} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-300" />
+          <Search
+            size={13}
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-300"
+          />
           <input
             value={search}
             onChange={(e) => {
@@ -83,28 +100,62 @@ export function ProductionsPage() {
         </button>
       </div>
 
-      {/* 使用排行 + 成片列表 */}
+      {/* 状态筛选 Tab */}
+      <div className="mb-4 flex items-center gap-1">
+        <button
+          onClick={() => setStatusFilter(null)}
+          className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all ${
+            statusFilter === null
+              ? 'bg-forest-700 text-cream-50 shadow-card'
+              : 'text-ink-500 hover:bg-ink-900/5'
+          }`}
+        >
+          全部
+        </button>
+        {PRODUCTION_STATUSES.map((s) => {
+          const active = statusFilter === s.key;
+          return (
+            <button
+              key={s.key}
+              onClick={() => setStatusFilter(s.key)}
+              className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all ${
+                active ? 'bg-forest-700 text-cream-50 shadow-card' : 'text-ink-500 hover:bg-ink-900/5'
+              }`}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 成片列表 + 使用排行 */}
       <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
         {/* 成片列表 */}
         <div>
-          {items.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-ink-900/10 py-20 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-forest-800 text-cream-100">
                 <Clapperboard size={22} />
               </div>
-              <h2 className="mt-4 text-[15px] font-semibold text-ink-900">还没有成片</h2>
-              <p className="mt-1 text-[12px] text-ink-400">创建成片并引用素材，系统会自动记录素材的使用次数</p>
-              <button
-                onClick={() => setCreating(true)}
-                className="mt-5 flex items-center gap-1.5 rounded-xl bg-forest-700 px-5 py-2.5 text-[13px] font-medium text-cream-50 shadow-card transition-all hover:bg-forest-600 active:scale-[0.98]"
-              >
-                <Plus size={15} />
-                新建成片
-              </button>
+              <h2 className="mt-4 text-[15px] font-semibold text-ink-900">
+                {statusFilter ? `没有「${PRODUCTION_STATUSES.find((s) => s.key === statusFilter)?.label}」的成片` : '还没有成片'}
+              </h2>
+              <p className="mt-1 text-[12px] text-ink-400">
+                创建成片并引用素材，系统会自动记录素材的使用次数
+              </p>
+              {!statusFilter && (
+                <button
+                  onClick={() => setCreating(true)}
+                  className="mt-5 flex items-center gap-1.5 rounded-xl bg-forest-700 px-5 py-2.5 text-[13px] font-medium text-cream-50 shadow-card transition-all hover:bg-forest-600 active:scale-[0.98]"
+                >
+                  <Plus size={15} />
+                  新建成片
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
-              {items.map((p, i) => (
+              {filtered.map((p, i) => (
                 <div
                   key={p.id}
                   onClick={() => openProduction(p.id)}
@@ -119,15 +170,7 @@ export function ProductionsPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[11px] text-forest-700">{p.code}</span>
                       <h3 className="truncate text-[13.5px] font-semibold text-ink-900">{p.title}</h3>
-                      <span
-                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                          p.publish_status === 'published'
-                            ? 'bg-forest-100 text-forest-700'
-                            : 'bg-ink-900/6 text-ink-400'
-                        }`}
-                      >
-                        {p.publish_status === 'published' ? '已发布' : '草稿'}
-                      </span>
+                      <StatusBadge status={p.publish_status} />
                     </div>
                     <p className="mt-1 truncate text-[11.5px] text-ink-400">
                       引用素材 {p.assetCount} 个 · 创建于 {formatDate(p.created_at)}
@@ -168,7 +211,9 @@ export function ProductionsPage() {
               <div className="space-y-2">
                 {ranking.map((r, i) => (
                   <div key={r.id} className="flex items-center gap-2.5">
-                    <span className={`w-4 text-center tabular text-[12px] font-semibold ${i < 3 ? 'text-gold' : 'text-ink-300'}`}>
+                    <span
+                      className={`w-4 text-center tabular text-[12px] font-semibold ${i < 3 ? 'text-gold' : 'text-ink-300'}`}
+                    >
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -187,7 +232,13 @@ export function ProductionsPage() {
       </div>
 
       {/* 新建成片 */}
-      <Modal open={creating} onClose={() => setCreating(false)} title="新建成片" subtitle="成片用于组织素材引用，引用即累计素材使用次数" width={480}>
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="新建成片"
+        subtitle="成片用于组织素材引用，引用即累计素材使用次数"
+        width={480}
+      >
         <div className="space-y-4 p-5">
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-ink-700">成片标题</label>
@@ -211,7 +262,10 @@ export function ProductionsPage() {
             />
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <button onClick={() => setCreating(false)} className="rounded-lg px-4 py-2 text-[12.5px] text-ink-400 hover:bg-ink-900/5">
+            <button
+              onClick={() => setCreating(false)}
+              className="rounded-lg px-4 py-2 text-[12.5px] text-ink-400 hover:bg-ink-900/5"
+            >
               取消
             </button>
             <button

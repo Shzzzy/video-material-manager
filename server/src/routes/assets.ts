@@ -12,6 +12,9 @@ import {
   getAssetDetail,
   updateAsset,
   deleteAsset,
+  batchSetTags,
+  batchSetGolden3s,
+  batchDeleteAssets,
   isVideoFile,
   type AssetFilters,
 } from '../services/assetService.js';
@@ -101,6 +104,40 @@ assetsRouter.post('/scan', (req, res) => {
   req.on('aborted', () => res.destroy());
 });
 
+// ---- 批量操作 ----
+/** POST /api/assets/batch/tags - 批量设置标签（整体替换） */
+assetsRouter.post('/batch/tags', (req, res) => {
+  const { assetIds, tagIds } = (req.body ?? {}) as { assetIds?: number[]; tagIds?: number[] };
+  if (!Array.isArray(assetIds) || assetIds.length === 0) {
+    res.status(400).json({ error: '请选择素材' });
+    return;
+  }
+  const count = batchSetTags(assetIds, tagIds ?? []);
+  res.json({ ok: true, affected: count });
+});
+
+/** POST /api/assets/batch/golden3s - 批量设置黄金3秒 */
+assetsRouter.post('/batch/golden3s', (req, res) => {
+  const { assetIds, golden3s } = (req.body ?? {}) as { assetIds?: number[]; golden3s?: boolean };
+  if (!Array.isArray(assetIds) || assetIds.length === 0) {
+    res.status(400).json({ error: '请选择素材' });
+    return;
+  }
+  const count = batchSetGolden3s(assetIds, Boolean(golden3s));
+  res.json({ ok: true, affected: count });
+});
+
+/** POST /api/assets/batch/delete - 批量删除素材 */
+assetsRouter.post('/batch/delete', (req, res) => {
+  const { assetIds } = (req.body ?? {}) as { assetIds?: number[] };
+  if (!Array.isArray(assetIds) || assetIds.length === 0) {
+    res.status(400).json({ error: '请选择素材' });
+    return;
+  }
+  const removed = batchDeleteAssets(assetIds);
+  res.json({ ok: true, removed });
+});
+
 // ---- 列表 ----
 /** GET /api/assets - 素材列表（搜索/筛选/分页） */
 assetsRouter.get('/', (req, res) => {
@@ -108,6 +145,7 @@ assetsRouter.get('/', (req, res) => {
   const filters: AssetFilters = {
     search: typeof q.search === 'string' ? q.search : undefined,
     golden3sOnly: q.golden3s === '1' || q.golden3s === 'true',
+    status: q.status === 'new' || q.status === 'organized' || q.status === 'used' ? q.status : undefined,
     page: q.page ? Math.max(1, Number(q.page)) : 1,
     pageSize: q.pageSize ? Math.min(200, Math.max(1, Number(q.pageSize))) : 60,
   };

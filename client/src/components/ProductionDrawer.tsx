@@ -5,6 +5,7 @@ import type { Asset, ProductionDetail } from '../types';
 import { api, formatDate, formatDuration, thumbUrl } from '../api';
 import { useStore } from '../store';
 import { AssetCard } from './AssetCard';
+import { PRODUCTION_STATUSES, StatusBadge } from './productionStatus';
 
 export function ProductionDrawer() {
   const { productionDrawerId, closeDrawer, bumpAssets } = useStore();
@@ -21,6 +22,24 @@ export function ProductionDrawer() {
     }
     void api.getProduction(productionDrawerId).then(setDetail);
   }, [productionDrawerId]);
+
+  // ESC 关闭抽屉
+  useEffect(() => {
+    if (!productionDrawerId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDrawer();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [productionDrawerId, closeDrawer]);
+
+  /** 切换成片状态 */
+  const changeStatus = async (status: string) => {
+    if (!detail) return;
+    await api.updateProduction(detail.id, { publishStatus: status });
+    setDetail(await api.getProduction(detail.id));
+    bumpAssets();
+  };
 
   /** 打开选择面板时拉取素材池 */
   const openPicker = async () => {
@@ -65,15 +84,7 @@ export function ProductionDrawer() {
         <div className="flex items-center gap-3 border-b border-ink-900/6 px-5 py-3.5">
           <span className="font-mono text-[12px] font-semibold text-forest-700">{detail.code}</span>
           <span className="truncate text-[13px] font-medium text-ink-900">{detail.title}</span>
-          <span
-            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-              detail.publish_status === 'published'
-                ? 'bg-forest-100 text-forest-700'
-                : 'bg-ink-900/6 text-ink-400'
-            }`}
-          >
-            {detail.publish_status === 'published' ? '已发布' : '草稿'}
-          </span>
+          <StatusBadge status={detail.publish_status} />
           <button
             onClick={closeDrawer}
             className="ml-auto rounded-lg p-1.5 text-ink-400 transition-colors hover:bg-ink-900/6 hover:text-ink-900"
@@ -97,13 +108,40 @@ export function ProductionDrawer() {
                       创建于 {formatDate(detail.created_at)}
                       {detail.duration ? ` · 时长 ${formatDuration(detail.duration)}` : ''}
                     </p>
-                    <p className="text-[11px] text-ink-400">
-                      引用素材 {detail.assets.length} 个
-                    </p>
+                    <p className="text-[11px] text-ink-400">引用素材 {detail.assets.length} 个</p>
+                  </div>
+                </div>
+                {/* 状态流转 */}
+                <div className="mt-3 border-t border-ink-900/6 pt-2.5">
+                  <p className="mb-1.5 text-[10.5px] font-semibold tracking-wider text-ink-400 uppercase">
+                    制作状态
+                  </p>
+                  <div className="flex items-center gap-1">
+                    {PRODUCTION_STATUSES.map((s) => {
+                      const active = detail.publish_status === s.key;
+                      return (
+                        <button
+                          key={s.key}
+                          onClick={() => void changeStatus(s.key)}
+                          className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-all duration-150 ${
+                            active
+                              ? 'bg-forest-700 text-cream-50 shadow-card'
+                              : 'text-ink-400 hover:bg-ink-900/5 hover:text-ink-900'
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              active ? 'bg-cream-50/80' : 'bg-ink-300'
+                            }`}
+                          />
+                          {s.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 {detail.description && (
-                  <p className="mt-3 border-t border-ink-900/6 pt-2.5 text-[11.5px] leading-relaxed text-ink-500">
+                  <p className="mt-2.5 border-t border-ink-900/6 pt-2.5 text-[11.5px] leading-relaxed text-ink-500">
                     {detail.description}
                   </p>
                 )}

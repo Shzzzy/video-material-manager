@@ -26,9 +26,12 @@ interface StoreState {
   assetSearch: string;
   assetGolden3s: boolean;
   assetTagIds: number[];
+  /** 素材状态筛选：null 全部 / new 待标注 / organized 已整理 / used 已使用 */
+  assetStatus: 'new' | 'organized' | 'used' | null;
   setAssetSearch: (v: string) => void;
   setAssetGolden3s: (v: boolean) => void;
   setAssetTagIds: (v: number[]) => void;
+  setAssetStatus: (v: 'new' | 'organized' | 'used' | null) => void;
   reloadCategories: () => Promise<void>;
   reloadAdapters: () => Promise<void>;
   setUploadOpen: (v: boolean) => void;
@@ -50,6 +53,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [assetSearch, setAssetSearchState] = useState('');
   const [assetGolden3s, setAssetGolden3sState] = useState(false);
   const [assetTagIds, setAssetTagIdsState] = useState<number[]>([]);
+  const [assetStatus, setAssetStatusState] = useState<'new' | 'organized' | 'used' | null>(null);
   /** 搜索防抖：停止输入 300ms 后触发刷新 */
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -75,6 +79,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setAssetTagIds = useCallback(
     (v: number[]) => {
       setAssetTagIdsState(v);
+      bumpAssets();
+    },
+    [bumpAssets],
+  );
+
+  const setAssetStatus = useCallback(
+    (v: 'new' | 'organized' | 'used' | null) => {
+      setAssetStatusState(v);
       bumpAssets();
     },
     [bumpAssets],
@@ -113,9 +125,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         assetSearch,
         assetGolden3s,
         assetTagIds,
+        assetStatus,
         setAssetSearch,
         setAssetGolden3s,
         setAssetTagIds,
+        setAssetStatus,
         reloadCategories,
         reloadAdapters,
         setUploadOpen,

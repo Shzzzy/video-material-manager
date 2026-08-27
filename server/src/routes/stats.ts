@@ -26,6 +26,17 @@ statsRouter.get('/overview', (_req, res) => {
   const totalDuration = (
     db.prepare(`SELECT COALESCE(SUM(duration), 0) AS n FROM assets`).get() as { n: number }
   ).n;
+  // 待标注：未使用、无标签、非黄金3秒
+  const pendingCount = (
+    db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM assets a
+         WHERE NOT EXISTS (SELECT 1 FROM production_assets pa WHERE pa.asset_id = a.id)
+           AND a.golden3s = 0
+           AND NOT EXISTS (SELECT 1 FROM asset_tags at WHERE at.asset_id = a.id)`,
+      )
+      .get() as { n: number }
+  ).n;
 
   res.json({
     assetTotal,
@@ -34,6 +45,7 @@ statsRouter.get('/overview', (_req, res) => {
     usageTotal,
     golden3sCount,
     totalDuration,
+    pendingCount,
   });
 });
 

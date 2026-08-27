@@ -8,7 +8,6 @@ import {
   FolderOpen,
   History,
   Loader2,
-  Sparkles,
   Tag,
   Trash2,
   UploadCloud,
@@ -34,11 +33,9 @@ export function AssetsPage() {
     setUploadOpen,
     openAsset,
     assetSearch,
-    assetGolden3s,
     assetTagIds,
     assetStatus,
     setAssetSearch,
-    setAssetGolden3s,
     setAssetTagIds,
     setAssetStatus,
   } = useStore();
@@ -54,12 +51,11 @@ export function AssetsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(
-    async (search: string, golden3s: boolean, tagIds: number[], status: 'new' | 'organized' | 'used' | null) => {
+    async (search: string, tagIds: number[], status: 'new' | 'organized' | 'used' | null) => {
       setLoading(true);
       try {
         const data = await api.listAssets({
           search,
-          golden3sOnly: golden3s,
           tagIds,
           status: status ?? undefined,
           pageSize: 120,
@@ -74,15 +70,14 @@ export function AssetsPage() {
   );
 
   useEffect(() => {
-    void load(assetSearch, assetGolden3s, assetTagIds, assetStatus);
+    void load(assetSearch, assetTagIds, assetStatus);
     void api.overview().then(setStats);
-  }, [assetsVersion, assetSearch, assetGolden3s, assetTagIds, assetStatus, load]);
+  }, [assetsVersion, assetSearch, assetTagIds, assetStatus, load]);
 
-  const hasFilter = assetSearch.trim() !== '' || assetGolden3s || assetTagIds.length > 0;
+  const hasFilter = assetSearch.trim() !== '' || assetTagIds.length > 0;
 
   const clearFilters = () => {
     setAssetSearch('');
-    setAssetGolden3s(false);
     setAssetTagIds([]);
     setAssetStatus(null);
   };
@@ -102,11 +97,6 @@ export function AssetsPage() {
     setSelectedIds(new Set());
   };
 
-  const batchGolden3s = async (v: boolean) => {
-    if (selectedIds.size === 0) return;
-    await api.batchSetGolden3s([...selectedIds], v);
-    exitSelectMode();
-  };
 
   const batchDelete = async () => {
     if (selectedIds.size === 0) return;
@@ -165,7 +155,6 @@ export function AssetsPage() {
             <StatItem icon={<Film size={13} />} label="素材总数" value={stats.assetTotal} />
             <StatItem icon={<Clapperboard size={13} />} label="成片数" value={stats.productionTotal} />
             <StatItem icon={<History size={13} />} label="累计使用" value={stats.usageTotal} />
-            <StatItem icon={<Sparkles size={13} />} label="黄金3秒" value={stats.golden3sCount} />
             <div className="ml-auto text-[11.5px] text-ink-400">
               素材总时长{' '}
               <span className="tabular font-medium text-ink-700">
@@ -289,13 +278,6 @@ export function AssetsPage() {
               >
                 <Tag size={12} />
                 打标签
-              </button>
-              <button
-                onClick={() => void batchGolden3s(true)}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] text-cream-100 transition-colors hover:bg-white/10"
-              >
-                <Sparkles size={12} />
-                黄金3秒
               </button>
               <span className="mx-1 h-4 w-px bg-white/15" />
               <button

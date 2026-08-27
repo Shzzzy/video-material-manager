@@ -11,7 +11,6 @@ export function AssetDrawer() {
   const [detail, setDetail] = useState<AssetDetail | null>(null);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
-  const [golden3s, setGolden3s] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
@@ -22,7 +21,6 @@ export function AssetDrawer() {
     void api.getAsset(assetDrawerId).then((d) => {
       setDetail(d);
       setTagIds(d.tags.map((t) => t.id));
-      setGolden3s(d.golden3s === 1);
     });
   }, [assetDrawerId]);
 
@@ -53,13 +51,6 @@ export function AssetDrawer() {
     }
   };
 
-  const toggleGolden3s = async () => {
-    const v = !golden3s;
-    setGolden3s(v);
-    const updated = await api.updateAsset(detail.id, { golden3s: v });
-    setDetail(updated);
-    bumpAssets();
-  };
 
   const remove = async () => {
     await api.deleteAsset(detail.id);
@@ -106,38 +97,6 @@ export function AssetDrawer() {
           </div>
 
           <div className="space-y-5 p-5">
-            {/* 黄金3秒 */}
-            <button
-              onClick={() => void toggleGolden3s()}
-              className={`flex w-full items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all ${
-                golden3s
-                  ? 'border-gold/60 bg-gold-soft'
-                  : 'border-ink-900/8 bg-cream-200/40 hover:border-ink-900/16'
-              }`}
-            >
-              <span
-                className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-                  golden3s ? 'bg-gold text-[#5c4708]' : 'bg-ink-900/6 text-ink-400'
-                }`}
-              >
-                <Sparkles size={14} />
-              </span>
-              <span className="flex-1">
-                <span className="block text-[12.5px] font-medium text-ink-900">黄金3秒标记</span>
-                <span className="block text-[11px] text-ink-400">
-                  高价值开场片段，可在素材库一键筛选
-                </span>
-              </span>
-              <span
-                className={`relative h-4.5 w-8 rounded-full transition-colors ${golden3s ? 'bg-gold' : 'bg-ink-900/14'}`}
-              >
-                <span
-                  className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-cream-50 shadow-card transition-all ${
-                    golden3s ? 'left-4' : 'left-0.5'
-                  }`}
-                />
-              </span>
-            </button>
 
             {/* 标签编辑 */}
             <div>

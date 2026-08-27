@@ -1,6 +1,6 @@
 /** 素材卡片：缩略图 + 编号 + 时长 + 标签 + 使用次数 + 快速打标（网格单元） */
 import { memo, useState } from 'react';
-import { AlertTriangle, Eye, Play, Sparkles, Tags } from 'lucide-react';
+import { AlertTriangle, Eye, Play, Tags } from 'lucide-react';
 import type { Asset } from '../types';
 import { api, formatDuration, formatSize, thumbUrl } from '../api';
 import { useStore } from '../store';
@@ -27,8 +27,8 @@ export const AssetCard = memo(function AssetCard({
   const [saving, setSaving] = useState(false);
 
   const thumb = thumbUrl(asset);
-  // 待标注：无标签、非黄金3秒、从未被使用
-  const pending = asset.tags.length === 0 && asset.golden3s === 0 && asset.usageCount === 0;
+  // 待标注：无标签、从未被使用
+  const pending = asset.tags.length === 0 && asset.usageCount === 0;
 
   const handleClick = () => {
     if (tagOpen) return; // 打标浮层打开时不触发卡片点击
@@ -86,19 +86,10 @@ export const AssetCard = memo(function AssetCard({
           {asset.code}
         </span>
 
-        {/* 右上：黄金3秒 */}
-        {asset.golden3s === 1 && (
-          <span className="absolute top-2 right-2 flex items-center gap-0.5 rounded-md bg-gold px-1.5 py-0.5 text-[10px] font-semibold text-[#5c4708] shadow-card">
-            <Sparkles size={9} />
-            黄金3秒
-          </span>
-        )}
         {/* 右上（黄金3秒时在下方）：待标注角标 */}
         {pending && !selectable && (
           <span
-            className={`absolute flex items-center gap-0.5 rounded-md bg-cream-50/95 px-1.5 py-0.5 text-[10px] font-semibold text-ink-500 shadow-card backdrop-blur-sm ${
-              asset.golden3s === 1 ? 'top-7 right-2' : 'top-2 right-2'
-            }`}
+            className="absolute top-2 right-2 flex items-center gap-0.5 rounded-md bg-cream-50/95 px-1.5 py-0.5 text-[10px] font-semibold text-ink-500 shadow-card backdrop-blur-sm"
           >
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
             待标注

@@ -57,7 +57,6 @@ export function initDb(): void {
       fps REAL,                                     -- 帧率
       sha256 TEXT UNIQUE,                           -- 文件指纹（去重）
       thumbnail_path TEXT,                          -- 缩略图路径
-      golden3s INTEGER NOT NULL DEFAULT 0,          -- 是否标记黄金3秒
       source TEXT NOT NULL DEFAULT 'upload',        -- 来源：upload（上传）/ folder（文件夹扫描）
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -92,6 +91,13 @@ export function initDb(): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // 迁移：移除历史版本的 golden3s 字段（黄金3秒功能已下线）
+  const cols = db.prepare(`PRAGMA table_info(assets)`).all() as Array<{ name: string }>;
+  if (cols.some((c) => c.name === 'golden3s')) {
+    db.exec(`ALTER TABLE assets DROP COLUMN golden3s`);
+    console.log('[db] 已迁移：移除 assets.golden3s 字段');
+  }
 }
 
 /** 生成素材编号：AS-0001 递增（基于最大 id，删除后不偏移） */

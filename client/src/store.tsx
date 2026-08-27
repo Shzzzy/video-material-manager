@@ -24,12 +24,10 @@ interface StoreState {
   assetsVersion: number;
   /** 素材库筛选状态（顶栏与侧边栏共用，避免重复渲染） */
   assetSearch: string;
-  assetGolden3s: boolean;
   assetTagIds: number[];
   /** 素材状态筛选：null 全部 / new 待标注 / organized 已整理 / used 已使用 */
   assetStatus: 'new' | 'organized' | 'used' | null;
   setAssetSearch: (v: string) => void;
-  setAssetGolden3s: (v: boolean) => void;
   setAssetTagIds: (v: number[]) => void;
   setAssetStatus: (v: 'new' | 'organized' | 'used' | null) => void;
   reloadCategories: () => Promise<void>;
@@ -51,7 +49,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [productionDrawerId, setProductionDrawerId] = useState<number | null>(null);
   const [assetsVersion, setAssetsVersion] = useState(0);
   const [assetSearch, setAssetSearchState] = useState('');
-  const [assetGolden3s, setAssetGolden3sState] = useState(false);
   const [assetTagIds, setAssetTagIdsState] = useState<number[]>([]);
   const [assetStatus, setAssetStatusState] = useState<'new' | 'organized' | 'used' | null>(null);
   /** 搜索防抖：停止输入 300ms 后触发刷新 */
@@ -68,13 +65,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [bumpAssets],
   );
 
-  const setAssetGolden3s = useCallback(
-    (v: boolean) => {
-      setAssetGolden3sState(v);
-      bumpAssets();
-    },
-    [bumpAssets],
-  );
 
   const setAssetTagIds = useCallback(
     (v: number[]) => {
@@ -123,11 +113,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         productionDrawerId,
         assetsVersion,
         assetSearch,
-        assetGolden3s,
         assetTagIds,
         assetStatus,
         setAssetSearch,
-        setAssetGolden3s,
         setAssetTagIds,
         setAssetStatus,
         reloadCategories,

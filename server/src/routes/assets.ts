@@ -13,7 +13,6 @@ import {
   updateAsset,
   deleteAsset,
   batchSetTags,
-  batchSetGolden3s,
   batchDeleteAssets,
   isVideoFile,
   type AssetFilters,
@@ -116,17 +115,6 @@ assetsRouter.post('/batch/tags', (req, res) => {
   res.json({ ok: true, affected: count });
 });
 
-/** POST /api/assets/batch/golden3s - 批量设置黄金3秒 */
-assetsRouter.post('/batch/golden3s', (req, res) => {
-  const { assetIds, golden3s } = (req.body ?? {}) as { assetIds?: number[]; golden3s?: boolean };
-  if (!Array.isArray(assetIds) || assetIds.length === 0) {
-    res.status(400).json({ error: '请选择素材' });
-    return;
-  }
-  const count = batchSetGolden3s(assetIds, Boolean(golden3s));
-  res.json({ ok: true, affected: count });
-});
-
 /** POST /api/assets/batch/delete - 批量删除素材 */
 assetsRouter.post('/batch/delete', (req, res) => {
   const { assetIds } = (req.body ?? {}) as { assetIds?: number[] };
@@ -144,7 +132,6 @@ assetsRouter.get('/', (req, res) => {
   const q = req.query;
   const filters: AssetFilters = {
     search: typeof q.search === 'string' ? q.search : undefined,
-    golden3sOnly: q.golden3s === '1' || q.golden3s === 'true',
     status: q.status === 'new' || q.status === 'organized' || q.status === 'used' ? q.status : undefined,
     page: q.page ? Math.max(1, Number(q.page)) : 1,
     pageSize: q.pageSize ? Math.min(200, Math.max(1, Number(q.pageSize))) : 60,
@@ -167,10 +154,10 @@ assetsRouter.get('/:id', (req, res) => {
 });
 
 // ---- 更新 ----
-/** PATCH /api/assets/:id - 更新素材（标签、黄金3秒） */
+/** PATCH /api/assets/:id - 更新素材（标签） */
 assetsRouter.patch('/:id', (req, res) => {
-  const { tagIds, golden3s } = (req.body ?? {}) as { tagIds?: number[]; golden3s?: boolean };
-  const updated = updateAsset(Number(req.params.id), { tagIds, golden3s });
+  const { tagIds } = (req.body ?? {}) as { tagIds?: number[] };
+  const updated = updateAsset(Number(req.params.id), { tagIds });
   if (!updated) {
     res.status(404).json({ error: '素材不存在' });
     return;

@@ -10,7 +10,6 @@
 - **素材录入**：浏览器上传（拖拽、多文件、最大 4GB）或扫描服务器文件夹（递归、SSE 实时进度）
 - **自动处理**：入库自动生成编号（AS-0001）、缩略图、SHA-256 指纹（重复文件自动去重）、元数据（时长 / 分辨率 / 帧率）
 - **自定义分类标签**：用户自定义分类维度（如：拍摄人员、场景、景别、剪辑人员），每个维度下自由增删标签值
-- **黄金3秒标记**：高价值开场片段一键标记、一键筛选
 - **检索**：按编号 / 文件名 / 标签搜索，组合筛选，多标签命中
 - **使用次数**：素材被成片引用自动累计次数，展示完整使用记录（时间 / 成片 / 用途）
 
@@ -89,10 +88,10 @@ creative-asset-workspace/
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | /api/assets | 素材列表（搜索/标签/黄金3秒/分页） |
+| GET | /api/assets | 素材列表（搜索/标签/状态/分页） |
 | POST | /api/assets/upload | 上传素材（multipart） |
 | POST | /api/assets/scan | 扫描文件夹（SSE 进度） |
-| GET/PATCH/DELETE | /api/assets/:id | 素材详情 / 更新（标签、黄金3秒）/ 删除 |
+| GET/PATCH/DELETE | /api/assets/:id | 素材详情 / 更新（标签）/ 删除 |
 | GET/POST/PATCH/DELETE | /api/categories | 分类维度 CRUD |
 | POST/PATCH/DELETE | /api/categories/tags | 标签 CRUD |
 | GET/POST/PATCH/DELETE | /api/productions | 成片 CRUD |

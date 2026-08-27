@@ -4,13 +4,7 @@ import { FolderSearch, Search, UploadCloud } from 'lucide-react';
 import { useStore } from '../../store';
 
 export function TopBar() {
-  const {
-    setUploadOpen,
-    assetSearch,
-    setAssetSearch,
-    assetGolden3s,
-    setAssetGolden3s,
-  } = useStore();
+  const { setUploadOpen, assetSearch, setAssetSearch } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -49,20 +43,7 @@ export function TopBar() {
               placeholder="搜索编号、文件名或标签"
               className="h-8.5 w-full rounded-lg border border-ink-900/8 bg-cream-200/60 pr-3 pl-8.5 text-[12.5px] text-ink-900 placeholder:text-ink-300 transition-all outline-none focus:border-forest-500/50 focus:bg-cream-50 focus:ring-2 focus:ring-forest-500/15"
             />
-          </div>
-          <button
-            onClick={() => setAssetGolden3s(!assetGolden3s)}
-            className={`flex h-8.5 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-medium transition-all duration-150 ${
-              assetGolden3s
-                ? 'border-gold/50 bg-gold-soft text-[#8a6a1d]'
-                : 'border-ink-900/8 bg-cream-200/60 text-ink-500 hover:border-ink-900/16 hover:text-ink-900'
-            }`}
-            title="只显示标记为黄金3秒的素材"
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${assetGolden3s ? 'bg-gold' : 'bg-ink-300'}`} />
-            只看黄金3秒
-          </button>
-        </>
+          </div>        </>
       )}
 
       {/* 主操作按钮 */}

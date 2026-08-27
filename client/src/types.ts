@@ -37,7 +37,6 @@ export interface Asset {
   fps: number | null;
   sha256: string | null;
   thumbnail_path: string | null;
-  golden3s: number;
   source: string;
   created_at: string;
   updated_at: string;
@@ -89,7 +88,6 @@ export interface OverviewStats {
   productionTotal: number;
   usedCount: number;
   usageTotal: number;
-  golden3sCount: number;
   totalDuration: number;
   pendingCount: number;
 }

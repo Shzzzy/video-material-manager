@@ -51,16 +51,16 @@ export const THEMES: ThemeDef[] = [
 
 export type ThemeId = (typeof THEMES)[number]['id'];
 
-/** 默认主题 */
-export const DEFAULT_THEME: ThemeId = 'cream';
-
-/** 主题存储键 */
-export const THEME_STORAGE_KEY = 'caw-theme';
-
 /* ================= 自动跟随时间（早上/中午/下午/晚上） ================= */
 
 /** 自动模式的存储值 */
 export const AUTO_THEME = 'auto';
+
+/** 默认主题偏好：自动跟随时间（渐变主题） */
+export const DEFAULT_THEME = AUTO_THEME;
+
+/** 主题存储键 */
+export const THEME_STORAGE_KEY = 'caw-theme';
 
 /** 时间段主题 id（对应 index.css 中的 [data-theme] 块） */
 export type TimeThemeId = 'auto-morning' | 'auto-noon' | 'auto-afternoon' | 'auto-night';

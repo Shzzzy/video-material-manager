@@ -121,6 +121,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyTheme(theme);
+    saveTheme(theme);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

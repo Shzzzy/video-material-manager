@@ -15,7 +15,7 @@ import { ProductionDrawer } from './components/ProductionDrawer';
 import { ThemeDialog } from './components/ThemeDialog';
 import { AdminPanel } from './components/AdminPanel';
 import { StoreProvider, useStore } from './store';
-import { memberToken } from './api';
+import { authToken } from './api';
 
 /** 主界面（已认证） */
 function Workspace() {
@@ -44,7 +44,7 @@ function Workspace() {
 
 function AppInner() {
   const { member } = useStore();
-  const hasToken = memberToken() !== null;
+  const hasToken = authToken() !== null;
 
   // 有 token 但身份尚未校验完成
   if (!member && hasToken) {
@@ -58,7 +58,7 @@ function AppInner() {
     );
   }
 
-  // 未加入工作台 → 引导页
+  // 未登录 → 登录/注册页
   if (!member) return <JoinPage />;
 
   return (

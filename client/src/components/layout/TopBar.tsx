@@ -1,11 +1,26 @@
 /** 顶栏：品牌区 + 搜索 + 成员标识 + 主操作按钮（全局唯一） */
 import { useLocation } from 'react-router-dom';
-import { FolderSearch, Search, Settings, UploadCloud } from 'lucide-react';
+import { FolderSearch, LogOut, Search, Settings, UploadCloud } from 'lucide-react';
+import { api, AUTH_TOKEN_KEY } from '../../api';
 import { useStore } from '../../store';
 
 export function TopBar() {
-  const { setUploadOpen, setUploadMode, setAdminPanelOpen, assetSearch, setAssetSearch, member } = useStore();
+  const { setUploadOpen, setUploadMode, setAdminPanelOpen, assetSearch, setAssetSearch, member, refreshMember } = useStore();
   const location = useLocation();
+
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      /* 忽略 */
+    }
+    try {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    } catch {
+      /* 忽略 */
+    }
+    await refreshMember();
+  };
 
   const pageName =
     location.pathname === '/productions'
@@ -59,6 +74,13 @@ export function TopBar() {
         </span>
         {member?.nickname}
         {member?.isAdmin && <Settings size={11} className="opacity-70" />}
+      </button>
+      <button
+        onClick={() => void logout()}
+        className="flex h-8.5 items-center gap-1 rounded-lg border border-ink-900/8 bg-cream-200/60 px-2.5 text-[12px] font-medium text-ink-400 transition-all hover:border-alert/40 hover:bg-alert-soft hover:text-alert"
+        title="退出登录"
+      >
+        <LogOut size={13} />
       </button>
 
       {/* 主操作按钮 */}

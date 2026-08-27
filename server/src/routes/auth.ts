@@ -1,119 +1,128 @@
 /**
- * 身份路由：加入工作台、当前成员、邀请码管理、成员管理、SSE 实时事件
+ * 账户路由：注册、登录、退出、用户管理（管理员）
  */
 import { Router, type Request, type Response } from 'express';
 import {
-  joinWorkspace,
-  memberByToken,
-  touchMember,
-  createInvite,
-  revokeInvite,
-  restoreInvite,
-  banMember,
-  listInvites,
-  listMembers,
-  type Member,
+  registerUser,
+  loginUser,
+  userByToken,
+  logoutUser,
+  listUsers,
+  setUserStatus,
+  resetUserPassword,
+  publicUser,
+  type User,
 } from '../services/authService.js';
 import { addListener, removeListener } from '../services/realtimeService.js';
 
 export const authRouter = Router();
 
-/** 请求中携带的成员（由中间件注入） */
+/** 请求中携带的用户（由中间件注入） */
 export interface AuthedRequest extends Request {
-  member?: Member;
+  user?: User;
 }
 
 /** 管理员校验中间件 */
 export function requireAdmin(req: Request, res: Response, next: () => void): void {
-  const member = (req as AuthedRequest).member;
-  if (!member || member.is_admin !== 1) {
+  const user = (req as AuthedRequest).user;
+  if (!user || user.role !== 'admin') {
     res.status(403).json({ error: '需要管理员权限' });
     return;
   }
   next();
 }
 
-// ---- 加入工作台 ----
-/** POST /api/auth/join - 邀请码 + 昵称 加入 */
-authRouter.post('/join', (req, res) => {
-  const { code, nickname } = (req.body ?? {}) as { code?: string; nickname?: string };
+// ---- 注册 ----
+/** POST /api/auth/register - 注册（首个用户需初始化管理员码） */
+authRouter.post('/register', (req, res) => {
+  const { phone, password, nickname, initCode } = (req.body ?? {}) as {
+    phone?: string;
+    password?: string;
+    nickname?: string;
+    initCode?: string;
+  };
   try {
-    const member = joinWorkspace(code ?? '', nickname ?? '');
-    res.json({
-      token: member.token,
-      nickname: member.nickname,
-      isAdmin: member.is_admin === 1,
-    });
+    const user = registerUser(phone ?? '', password ?? '', nickname ?? '', initCode);
+    res.status(201).json({ token: user.token, ...publicUser(user) });
   } catch (e) {
-    res.status(400).json({ error: e instanceof Error ? e.message : '加入失败' });
+    res.status(400).json({ error: e instanceof Error ? e.message : '注册失败' });
   }
 });
 
-// ---- 当前成员 ----
-/** GET /api/auth/me - 校验 token 并返回当前成员（前端启动时调用） */
+// ---- 登录 ----
+/** POST /api/auth/login - 登录（失败限流） */
+authRouter.post('/login', (req, res) => {
+  const { phone, password } = (req.body ?? {}) as { phone?: string; password?: string };
+  try {
+    const user = loginUser(phone ?? '', password ?? '');
+    res.json({ token: user.token, ...publicUser(user) });
+  } catch (e) {
+    res.status(401).json({ error: e instanceof Error ? e.message : '登录失败' });
+  }
+});
+
+// ---- 退出 ----
+/** POST /api/auth/logout - 退出登录 */
+authRouter.post('/logout', (req, res) => {
+  const user = (req as AuthedRequest).user;
+  if (user) logoutUser(user.id);
+  res.json({ ok: true });
+});
+
+// ---- 当前用户 ----
+/** GET /api/auth/me - 当前用户信息（前端启动时校验） */
 authRouter.get('/me', (req, res) => {
-  const member = (req as AuthedRequest).member;
-  if (!member) {
-    res.status(401).json({ error: '未加入工作台' });
+  const user = (req as AuthedRequest).user;
+  if (!user) {
+    res.status(401).json({ error: '未登录' });
     return;
   }
-  touchMember(member.id);
-  res.json({
-    id: member.id,
-    nickname: member.nickname,
-    isAdmin: member.is_admin === 1,
-  });
+  res.json(publicUser(user));
 });
 
 // ---- 实时事件流（SSE） ----
 /** GET /api/auth/events - 订阅变更广播（需登录） */
 authRouter.get('/events', (req, res) => {
-  const member = (req as AuthedRequest).member;
-  if (!member) {
-    res.status(401).json({ error: '未加入工作台' });
+  const user = (req as AuthedRequest).user;
+  if (!user) {
+    res.status(401).json({ error: '未登录' });
     return;
   }
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
-  res.write(`event: hello\ndata: ${JSON.stringify({ member: member.nickname })}\n\n`);
+  res.write(`event: hello\ndata: ${JSON.stringify({ nickname: user.nickname })}\n\n`);
 
-  const listener = { res, member };
-  addListener(listener);
-  req.on('close', () => removeListener(listener));
+  const listener = { res, member: user as unknown as { nickname: string } };
+  addListener(listener as never);
+  req.on('close', () => removeListener(listener as never));
 });
 
-// ---- 邀请码管理（管理员） ----
-/** GET /api/auth/invites */
-authRouter.get('/invites', requireAdmin, (_req, res) => {
-  res.json(listInvites());
+// ---- 用户管理（管理员） ----
+/** GET /api/auth/users - 用户列表 */
+authRouter.get('/users', requireAdmin, (_req, res) => {
+  res.json(listUsers());
 });
 
-/** POST /api/auth/invites - 生成邀请码 */
-authRouter.post('/invites', requireAdmin, (req, res) => {
-  const member = (req as AuthedRequest).member!;
-  const { note } = (req.body ?? {}) as { note?: string };
-  res.status(201).json(createInvite(member, note));
+/** PATCH /api/auth/users/:id/status - 禁用/启用账号 */
+authRouter.patch('/users/:id/status', requireAdmin, (req, res) => {
+  const { status } = (req.body ?? {}) as { status?: number };
+  try {
+    setUserStatus(Number(req.params.id), status === 0 ? 0 : 1);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e instanceof Error ? e.message : '操作失败' });
+  }
 });
 
-/** PATCH /api/auth/invites/:id - 拉黑/恢复 */
-authRouter.patch('/invites/:id', requireAdmin, (req, res) => {
-  const { revoked } = (req.body ?? {}) as { revoked?: boolean };
-  const id = Number(req.params.id);
-  if (revoked) revokeInvite(id);
-  else restoreInvite(id);
-  res.json({ ok: true });
-});
-
-// ---- 成员管理（管理员） ----
-/** GET /api/auth/members */
-authRouter.get('/members', requireAdmin, (_req, res) => {
-  res.json(listMembers());
-});
-
-/** POST /api/auth/members/:id/ban - 踢出成员 */
-authRouter.post('/members/:id/ban', requireAdmin, (req, res) => {
-  banMember(Number(req.params.id));
-  res.json({ ok: true });
+/** POST /api/auth/users/:id/reset-password - 重置密码 */
+authRouter.post('/users/:id/reset-password', requireAdmin, (req, res) => {
+  const { newPassword } = (req.body ?? {}) as { newPassword?: string };
+  try {
+    resetUserPassword(Number(req.params.id), newPassword ?? '');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e instanceof Error ? e.message : '重置失败' });
+  }
 });

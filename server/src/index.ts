@@ -10,7 +10,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initDb, DATA_DIR } from './lib/db.js';
-import { bootstrapAdminCode, memberByToken, type Member } from './services/authService.js';
+import { bootstrapAdminCode, userByToken, type User } from './services/authService.js';
 import { assetsRouter } from './routes/assets.js';
 import { categoriesRouter } from './routes/categories.js';
 import { productionsRouter } from './routes/productions.js';
@@ -29,32 +29,36 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-/** 扩展请求类型：携带当前成员 */
+/** 扩展请求类型：携带当前用户 */
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
-      member?: Member;
+      user?: User;
     }
   }
 }
 
-// ---- 认证中间件：除健康检查与加入接口外，全部要求成员 token ----
+// ---- 认证中间件：除健康检查与注册/登录外，全部要求登录 token ----
 app.use('/api', (req: Request, res: Response, next: NextFunction) => {
   // 白名单：无需 token
-  if (req.path === '/health' || req.path === '/auth/join') {
+  if (
+    req.path === '/health' ||
+    req.path === '/auth/register' ||
+    req.path === '/auth/login'
+  ) {
     next();
     return;
   }
   const token =
-    (req.headers['x-member-token'] as string | undefined) ||
+    (req.headers['x-auth-token'] as string | undefined) ||
     (typeof req.query.token === 'string' ? req.query.token : undefined);
-  const member = memberByToken(token ?? '');
-  if (!member) {
-    res.status(401).json({ error: '未加入工作台或会话已失效' });
+  const user = userByToken(token ?? '');
+  if (!user) {
+    res.status(401).json({ error: '未登录或会话已失效' });
     return;
   }
-  req.member = member;
+  req.user = user;
   next();
 });
 

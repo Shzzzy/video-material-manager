@@ -40,7 +40,7 @@ const upload = multer({
 
 /** POST /api/assets/upload - 上传视频素材（支持多文件） */
 assetsRouter.post('/upload', upload.array('files'), async (req, res) => {
-  const member = (req as AuthedRequest).member;
+  const user = (req as AuthedRequest).user;
   const files = (req.files as Express.Multer.File[]) ?? [];
   if (files.length === 0) {
     res.status(400).json({ error: '未收到文件' });
@@ -54,7 +54,7 @@ assetsRouter.post('/upload', upload.array('files'), async (req, res) => {
         continue;
       }
       try {
-        const { asset, duplicated } = await registerAsset(f.path, f.originalname, 'upload', member?.id ?? null);
+        const { asset, duplicated } = await registerAsset(f.path, f.originalname, 'upload', user?.id ?? null);
         if (duplicated) {
           // 内容重复：清理刚上传的临时文件，避免磁盘垃圾
           try {
@@ -124,13 +124,13 @@ assetsRouter.post('/batch/tags', (req, res) => {
 
 /** POST /api/assets/batch/delete - 批量删除素材 */
 assetsRouter.post('/batch/delete', (req, res) => {
-  const member = (req as AuthedRequest).member!;
+  const user = (req as AuthedRequest).user!;
   const { assetIds } = (req.body ?? {}) as { assetIds?: number[] };
   if (!Array.isArray(assetIds) || assetIds.length === 0) {
     res.status(400).json({ error: '请选择素材' });
     return;
   }
-  const removed = batchDeleteAssets(assetIds, member.id, member.is_admin === 1);
+  const removed = batchDeleteAssets(assetIds, user.id, user.role === 'admin');
   notifyChanged('assets');
   res.json({ ok: true, removed });
 });
@@ -177,9 +177,9 @@ assetsRouter.patch('/:id', (req, res) => {
 // ---- 删除 ----
 /** DELETE /api/assets/:id */
 assetsRouter.delete('/:id', (req, res) => {
-  const member = (req as AuthedRequest).member!;
+  const user = (req as AuthedRequest).user!;
   const id = Number(req.params.id);
-  if (!canDeleteAsset(id, member.id, member.is_admin === 1)) {
+  if (!canDeleteAsset(id, user.id, user.role === 'admin')) {
     res.status(403).json({ error: '只能删除自己上传的素材（管理员可删除全部）' });
     return;
   }

@@ -8,17 +8,17 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { api, memberToken, MEMBER_TOKEN_KEY } from './api';
+import { api, authToken } from './api';
 import { applyTheme, AUTO_THEME, DEFAULT_THEME, loadTheme, saveTheme } from './themes';
 import type { AdapterStatus, Category } from './types';
 
 interface StoreState {
-  /** 当前成员（未加入为 null） */
+  /** 当前用户（未登录为 null） */
   member: { id: number; nickname: string; isAdmin: boolean } | null;
   /** 管理面板开关 */
   adminPanelOpen: boolean;
   setAdminPanelOpen: (v: boolean) => void;
-  /** 刷新成员信息 */
+  /** 刷新用户信息 */
   refreshMember: () => Promise<void>;
   categories: Category[];
   adapters: AdapterStatus[];
@@ -105,7 +105,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const reloadCategories = useCallback(async () => {
-    if (!memberToken()) return; // 未加入工作台不请求
+    if (!authToken()) return; // 未登录不请求
     try {
       setCategories(await api.listCategories());
     } catch {
@@ -114,7 +114,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reloadAdapters = useCallback(async () => {
-    if (!memberToken()) return; // 未加入工作台不请求
+    if (!authToken()) return; // 未登录不请求
     try {
       setAdapters(await api.adapters());
     } catch {
@@ -128,7 +128,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [reloadCategories, reloadAdapters]);
 
   const refreshMember = useCallback(async () => {
-    if (!memberToken()) {
+    if (!authToken()) {
       setMember(null);
       return;
     }
@@ -146,8 +146,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // SSE 实时同步：成员操作后自动刷新数据
   useEffect(() => {
-    if (!memberToken()) return;
-    const es = new EventSource(`/api/auth/events?token=${encodeURIComponent(memberToken() ?? '')}`);
+    if (!authToken()) return;
+    const es = new EventSource(`/api/auth/events?token=${encodeURIComponent(authToken() ?? '')}`);
     es.addEventListener('changed', (e) => {
       try {
         const { kind } = JSON.parse((e as MessageEvent).data);

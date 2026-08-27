@@ -91,26 +91,17 @@ export function initDb(): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- 成员（无账户：邀请码 + 昵称进入）
-    CREATE TABLE IF NOT EXISTS members (
+    -- 用户（手机号 + 密码的正式账户体系）
+    CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nickname TEXT NOT NULL,                       -- 昵称（可重复，设备 token 区分）
-      token TEXT NOT NULL UNIQUE,                   -- 设备 token（随机 uuid，浏览器保存）
-      is_admin INTEGER NOT NULL DEFAULT 0,          -- 是否管理员
-      invite_id INTEGER,                            -- 通过哪个邀请码加入（拉黑用）
-      banned INTEGER NOT NULL DEFAULT 0,            -- 是否被拉黑
-      first_seen TEXT NOT NULL DEFAULT (datetime('now')),
-      last_seen TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    -- 邀请码
-    CREATE TABLE IF NOT EXISTS invites (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      code TEXT NOT NULL UNIQUE,                    -- 邀请码（如 CAW-XXXX）
-      note TEXT,                                    -- 备注（发给谁）
-      created_by INTEGER,                           -- 创建人 member_id
-      revoked INTEGER NOT NULL DEFAULT 0,           -- 是否已拉黑
-      used_count INTEGER NOT NULL DEFAULT 0,        -- 已使用次数
+      phone TEXT NOT NULL UNIQUE,                   -- 手机号（登录账号）
+      password_hash TEXT NOT NULL,                  -- 密码哈希（scrypt）
+      nickname TEXT NOT NULL,                       -- 昵称/名称
+      role TEXT NOT NULL DEFAULT 'user',            -- 角色：admin / user（预留扩展）
+      status INTEGER NOT NULL DEFAULT 1,            -- 1 正常 / 0 禁用
+      token TEXT UNIQUE,                            -- 当前会话 token（登录时签发）
+      login_count INTEGER NOT NULL DEFAULT 0,       -- 累计登录次数
+      last_login_at TEXT,                           -- 最近登录时间
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -119,6 +110,20 @@ export function initDb(): void {
   migrateColumn('assets', 'created_by', 'INTEGER');
   migrateColumn('productions', 'created_by', 'INTEGER');
   migrateColumn('production_assets', 'created_by', 'INTEGER');
+
+  // 迁移：从无账户（members/invites）切换到正式账户（users）
+  // 历史 created_by 指向已废弃的 members 表，重置为 NULL 避免错位
+  const hasMembers = db
+    .prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='members'`)
+    .get() as { n: number };
+  if (hasMembers.n > 0) {
+    db.exec(`UPDATE assets SET created_by = NULL`);
+    db.exec(`UPDATE productions SET created_by = NULL`);
+    db.exec(`UPDATE production_assets SET created_by = NULL`);
+    db.exec(`DROP TABLE IF EXISTS invites`);
+    db.exec(`DROP TABLE IF EXISTS members`);
+    console.log('[db] 已迁移：members/invites 表移除（切换为 users 账户体系）');
+  }
 
   // 迁移：移除历史版本的 golden3s 字段（黄金3秒功能已下线）
   const cols = db.prepare(`PRAGMA table_info(assets)`).all() as Array<{ name: string }>;

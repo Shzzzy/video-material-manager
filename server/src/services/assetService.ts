@@ -131,10 +131,10 @@ export function listAssets(filters: AssetFilters): {
   const items = db
     .prepare(
       `SELECT a.*,
-        m.nickname AS creator_name,
+        u.nickname AS creator_name,
         (SELECT COUNT(*) FROM production_assets pa WHERE pa.asset_id = a.id) AS usageCount
        FROM assets a
-       LEFT JOIN members m ON m.id = a.created_by
+       LEFT JOIN users u ON u.id = a.created_by
        ${whereSql}
        ORDER BY a.created_at DESC
        LIMIT ? OFFSET ?`,

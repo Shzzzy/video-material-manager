@@ -1,41 +1,36 @@
-/** 管理面板：邀请码管理与成员管理（仅核心管理员可见） */
+/** 管理面板：用户管理（禁用/启用、重置密码、登录记录）· 仅核心管理员 */
 import { useCallback, useEffect, useState } from 'react';
-import { Ban, Check, Copy, KeyRound, Plus, RefreshCw, Users } from 'lucide-react';
+import { Ban, Check, KeyRound, RefreshCw, RotateCcw, Users } from 'lucide-react';
 import { api, formatDate } from '../api';
 import { useStore } from '../store';
 import { Modal } from './Modal';
 
-interface Invite {
+interface AdminUser {
   id: number;
-  code: string;
-  note: string | null;
-  revoked: number;
-  used_count: number;
+  phone: string;
+  nickname: string;
+  role: string;
+  status: number;
+  login_count: number;
+  last_login_at: string | null;
   created_at: string;
 }
 
-interface TeamMember {
-  id: number;
-  nickname: string;
-  is_admin: number;
-  banned: number;
-  first_seen: string;
-  last_seen: string;
+/** 手机号脱敏：138****0001 */
+function maskPhone(phone: string): string {
+  return phone.length === 11 ? `${phone.slice(0, 3)}****${phone.slice(7)}` : phone;
 }
 
 export function AdminPanel() {
-  const { adminPanelOpen, setAdminPanelOpen, refreshMember } = useStore();
-  const [tab, setTab] = useState<'invites' | 'members'>('invites');
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [note, setNote] = useState('');
-  const [copied, setCopied] = useState<number | null>(null);
+  const { adminPanelOpen, setAdminPanelOpen, member } = useStore();
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [msg, setMsg] = useState('');
 
   const load = useCallback(async () => {
     try {
-      const [inv, mem] = await Promise.all([api.listInvites(), api.listMembers()]);
-      setInvites(inv);
-      setMembers(mem);
+      setUsers(await api.listUsers());
     } catch {
       /* 权限失效时静默 */
     }
@@ -45,195 +40,173 @@ export function AdminPanel() {
     if (adminPanelOpen) void load();
   }, [adminPanelOpen, load]);
 
-  const createInvite = async () => {
-    const inv = await api.createInvite(note || undefined);
-    setNote('');
+  const toggleStatus = async (u: AdminUser) => {
+    const action = u.status === 1 ? '禁用' : '启用';
+    if (!confirm(`确认${action}「${u.nickname}」？${u.status === 1 ? '其登录会话将立即失效。' : ''}`)) return;
+    await api.setUserStatus(u.id, u.status === 1 ? 0 : 1);
+    setMsg(`${action}成功`);
+    setTimeout(() => setMsg(''), 2000);
     await load();
-    void copyCode(inv.code);
   };
 
-  const copyCode = async (code: string, id?: number) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      if (id) {
-        setCopied(id);
-        setTimeout(() => setCopied(null), 1500);
-      }
-    } catch {
-      /* 剪贴板不可用时忽略 */
+  const doReset = async () => {
+    if (!resetTarget) return;
+    if (newPassword.length < 6) {
+      setMsg('新密码至少 6 位');
+      return;
     }
+    await api.resetPassword(resetTarget.id, newPassword);
+    setResetTarget(null);
+    setNewPassword('');
+    setMsg(`已重置「${resetTarget.nickname}」的密码`);
+    setTimeout(() => setMsg(''), 2500);
   };
 
-  const toggleRevoke = async (inv: Invite) => {
-    await api.revokeInvite(inv.id, inv.revoked === 0);
-    await load();
-  };
-
-  const ban = async (id: number, nickname: string) => {
-    if (!confirm(`确认将「${nickname}」移出工作台？其操作权限立即失效。`)) return;
-    await api.banMember(id);
-    await load();
-  };
+  const admin = users.find((u) => u.role === 'admin');
 
   return (
-    <Modal
-      open={adminPanelOpen}
-      onClose={() => setAdminPanelOpen(false)}
-      title="管理工作台"
-      subtitle="邀请码与成员管理 · 仅核心管理员可见"
-      width={620}
-    >
-      {/* Tab */}
-      <div className="flex gap-1 border-b border-ink-900/6 px-5 pt-3 pb-3">
-        <button
-          onClick={() => setTab('invites')}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-all ${
-            tab === 'invites' ? 'bg-forest-100 text-forest-800' : 'text-ink-400 hover:bg-ink-900/4'
-          }`}
-        >
-          <KeyRound size={13} /> 邀请码
-        </button>
-        <button
-          onClick={() => setTab('members')}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-all ${
-            tab === 'members' ? 'bg-forest-100 text-forest-800' : 'text-ink-400 hover:bg-ink-900/4'
-          }`}
-        >
-          <Users size={13} /> 成员
-        </button>
-        <button
-          onClick={() => void load()}
-          className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11.5px] text-ink-400 hover:bg-ink-900/4"
-        >
-          <RefreshCw size={11} /> 刷新
-        </button>
-      </div>
-
-      <div className="min-h-[300px] p-5">
-        {tab === 'invites' ? (
-          <div className="space-y-3">
-            {/* 生成邀请码 */}
-            <div className="flex items-center gap-2">
-              <input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="备注（发给谁，可选）"
-                className="h-9 flex-1 rounded-lg border border-ink-900/8 bg-cream-200/60 px-3 text-[12.5px] outline-none focus:border-forest-500/50 focus:ring-2 focus:ring-forest-500/15"
-              />
-              <button
-                onClick={() => void createInvite()}
-                className="flex h-9 items-center gap-1.5 rounded-lg bg-forest-700 px-4 text-[12.5px] font-medium text-cream-50 shadow-card transition-all hover:bg-forest-600 active:scale-[0.98]"
-              >
-                <Plus size={13} />
-                生成邀请码
-              </button>
-            </div>
-
-            {/* 邀请码列表 */}
-            {invites.length === 0 ? (
-              <p className="py-10 text-center text-[12px] text-ink-400">
-                还没有邀请码，先生成一个发给团队成员
-              </p>
-            ) : (
-              <div className="space-y-1.5">
-                {invites.map((inv) => (
-                  <div
-                    key={inv.id}
-                    className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
-                      inv.revoked === 1 ? 'border-alert/30 bg-alert-soft/60 opacity-70' : 'border-ink-900/8 bg-cream-200/40'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[12.5px] font-semibold text-forest-700">
-                          {inv.code}
-                        </span>
-                        {inv.revoked === 1 ? (
-                          <span className="rounded bg-alert-soft px-1.5 py-px text-[10px] font-medium text-alert">
-                            已拉黑
-                          </span>
-                        ) : (
-                          <span className="rounded bg-forest-100 px-1.5 py-px text-[10px] font-medium text-forest-700">
-                            有效
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-ink-400">
-                        {inv.note ? `${inv.note} · ` : ''}已用 {inv.used_count} 次 · {formatDate(inv.created_at)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => void copyCode(inv.code, inv.id)}
-                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11.5px] text-ink-400 transition-colors hover:bg-ink-900/5 hover:text-ink-700"
-                      title="复制邀请码"
-                    >
-                      {copied === inv.id ? <Check size={12} className="text-forest-600" /> : <Copy size={12} />}
-                      复制
-                    </button>
-                    <button
-                      onClick={() => void toggleRevoke(inv)}
-                      className={`rounded-lg px-2 py-1.5 text-[11.5px] transition-colors ${
-                        inv.revoked === 1
-                          ? 'text-forest-600 hover:bg-forest-100'
-                          : 'text-alert hover:bg-alert-soft'
-                      }`}
-                    >
-                      {inv.revoked === 1 ? '恢复' : '拉黑'}
-                    </button>
-                  </div>
-                ))}
+    <>
+      <Modal
+        open={adminPanelOpen}
+        onClose={() => setAdminPanelOpen(false)}
+        title="用户管理"
+        subtitle="管理团队成员账号 · 仅核心管理员可见"
+        width={640}
+      >
+        <div className="p-5">
+          {/* 管理员信息条 */}
+          {admin && (
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-gold/40 bg-gold-soft/60 px-3.5 py-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest-700 text-[12px] font-semibold text-cream-50">
+                {admin.nickname.slice(0, 1)}
               </div>
-            )}
-            <p className="text-[11px] leading-relaxed text-ink-300">
-              拉黑邀请码后，通过该码加入的成员将立即失去访问权限；恢复后重新可用。
-            </p>
-          </div>
-        ) : (
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-[12.5px] font-medium text-ink-900">
+                  {admin.nickname}
+                  <span className="rounded bg-gold-soft px-1.5 py-px text-[10px] font-medium text-gold-ink">
+                    核心管理员
+                  </span>
+                </p>
+                <p className="mt-0.5 text-[11px] text-ink-400">
+                  {maskPhone(admin.phone)} · 登录 {admin.login_count} 次
+                  {admin.last_login_at ? ` · 最近 ${formatDate(admin.last_login_at)}` : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 用户列表 */}
           <div className="space-y-1.5">
-            {members.length === 0 ? (
-              <p className="py-10 text-center text-[12px] text-ink-400">暂无成员</p>
-            ) : (
-              members.map((m) => (
+            {users
+              .filter((u) => u.role !== 'admin')
+              .map((u) => (
                 <div
-                  key={m.id}
+                  key={u.id}
                   className="flex items-center gap-3 rounded-xl border border-ink-900/8 bg-cream-200/40 px-3 py-2.5"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest-700 text-[12px] font-semibold text-cream-50">
-                    {m.nickname.slice(0, 1)}
+                    {u.nickname.slice(0, 1)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-[12.5px] font-medium text-ink-900">{m.nickname}</span>
-                      {m.is_admin === 1 && (
-                        <span className="rounded bg-gold-soft px-1.5 py-px text-[10px] font-medium text-gold-ink">
-                          核心管理员
-                        </span>
-                      )}
-                      {m.banned === 1 && (
+                      <span className="truncate text-[12.5px] font-medium text-ink-900">{u.nickname}</span>
+                      {u.status === 0 && (
                         <span className="rounded bg-alert-soft px-1.5 py-px text-[10px] font-medium text-alert">
-                          已移出
+                          已禁用
                         </span>
                       )}
                     </div>
                     <p className="mt-0.5 text-[11px] text-ink-400">
-                      加入 {formatDate(m.first_seen)} · 最近活跃 {formatDate(m.last_seen)}
+                      {maskPhone(u.phone)} · 注册 {formatDate(u.created_at)}
+                      {u.last_login_at ? ` · 登录 ${u.login_count} 次，最近 ${formatDate(u.last_login_at)}` : ' · 尚未登录'}
                     </p>
                   </div>
-                  {m.is_admin !== 1 && m.banned === 0 && (
-                    <button
-                      onClick={() => void ban(m.id, m.nickname)}
-                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11.5px] text-alert transition-colors hover:bg-alert-soft"
-                    >
-                      <Ban size={12} />
-                      移出
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      setResetTarget(u);
+                      setNewPassword('');
+                    }}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11.5px] text-ink-400 transition-colors hover:bg-ink-900/5 hover:text-ink-700"
+                    title="重置密码"
+                  >
+                    <KeyRound size={12} />
+                    重置密码
+                  </button>
+                  <button
+                    onClick={() => void toggleStatus(u)}
+                    className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11.5px] transition-colors ${
+                      u.status === 1
+                        ? 'text-alert hover:bg-alert-soft'
+                        : 'text-forest-600 hover:bg-forest-100'
+                    }`}
+                  >
+                    {u.status === 1 ? <Ban size={12} /> : <RotateCcw size={12} />}
+                    {u.status === 1 ? '禁用' : '启用'}
+                  </button>
                 </div>
-              ))
+              ))}
+            {users.filter((u) => u.role !== 'admin').length === 0 && (
+              <p className="py-8 text-center text-[12px] text-ink-400">
+                还没有普通用户。成员通过注册页的手机号 + 密码注册后出现在这里。
+              </p>
             )}
           </div>
-        )}
-      </div>
-    </Modal>
+
+          <div className="mt-4 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-[11px] text-ink-300">
+              <Users size={11} />
+              共 {users.length} 个账号 · 核心管理员固定 1 个，不可禁用
+            </p>
+            {msg && <p className="text-[12px] font-medium text-forest-600">{msg}</p>}
+            <button
+              onClick={() => void load()}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] text-ink-400 hover:bg-ink-900/5"
+            >
+              <RefreshCw size={11} /> 刷新
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 重置密码 */}
+      <Modal
+        open={resetTarget !== null}
+        onClose={() => setResetTarget(null)}
+        title={`重置「${resetTarget?.nickname ?? ''}」的密码`}
+        subtitle="重置后该用户需用新密码登录"
+        width={400}
+      >
+        <div className="space-y-4 p-5">
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-ink-700">新密码（6-32 位）</label>
+            <input
+              autoFocus
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void doReset()}
+              placeholder="输入新密码"
+              className="h-10 w-full rounded-lg border border-ink-900/8 bg-cream-200/60 px-3 text-[13px] outline-none focus:border-forest-500/50 focus:ring-2 focus:ring-forest-500/15"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setResetTarget(null)}
+              className="rounded-lg px-4 py-2 text-[12.5px] text-ink-400 hover:bg-ink-900/5"
+            >
+              取消
+            </button>
+            <button
+              onClick={() => void doReset()}
+              disabled={newPassword.length < 6}
+              className="flex items-center gap-1.5 rounded-lg bg-forest-700 px-5 py-2 text-[12.5px] font-medium text-cream-50 shadow-card transition-all hover:bg-forest-600 active:scale-[0.98] disabled:opacity-40"
+            >
+              <Check size={13} />
+              确认重置
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

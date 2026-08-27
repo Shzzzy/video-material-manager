@@ -18,10 +18,10 @@ productionsRouter.get('/', (req, res) => {
   const items = db
     .prepare(
       `SELECT p.*,
-        m.nickname AS creator_name,
+        u.nickname AS creator_name,
         (SELECT COUNT(*) FROM production_assets pa WHERE pa.production_id = p.id) AS assetCount
        FROM productions p
-       LEFT JOIN members m ON m.id = p.created_by
+       LEFT JOIN users u ON u.id = p.created_by
        ${where}
        ORDER BY p.created_at DESC`,
     )
@@ -32,7 +32,7 @@ productionsRouter.get('/', (req, res) => {
 // ---- 创建 ----
 /** POST /api/productions - 新建成片 */
 productionsRouter.post('/', (req, res) => {
-  const member = (req as AuthedRequest).member;
+  const user = (req as AuthedRequest).user;
   const { title, duration, description, coverPath } = (req.body ?? {}) as {
     title?: string;
     duration?: number | null;
@@ -49,7 +49,7 @@ productionsRouter.post('/', (req, res) => {
       `INSERT INTO productions (code, title, duration, description, cover_path, created_by)
        VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run(code, title.trim(), duration ?? null, description ?? null, coverPath ?? null, member?.id ?? null);
+    .run(code, title.trim(), duration ?? null, description ?? null, coverPath ?? null, user?.id ?? null);
   notifyChanged('productions');
   res
     .status(201)
@@ -80,7 +80,7 @@ productionsRouter.get('/:id', (req, res) => {
 // ---- 更新 ----
 /** PATCH /api/productions/:id - 更新成片信息（非管理员仅限自己的成片） */
 productionsRouter.patch('/:id', (req, res) => {
-  const member = (req as AuthedRequest).member!;
+  const user = (req as AuthedRequest).user!;
   const { title, duration, description, coverPath, publishStatus } = (req.body ?? {}) as {
     title?: string;
     duration?: number | null;
@@ -95,7 +95,7 @@ productionsRouter.patch('/:id', (req, res) => {
     res.status(404).json({ error: '成片不存在' });
     return;
   }
-  if (member.is_admin !== 1 && cur.created_by !== member.id) {
+  if (user.role !== 'admin' && cur.created_by !== user.id) {
     res.status(403).json({ error: '只能编辑自己创建的成片' });
     return;
   }
@@ -123,7 +123,7 @@ productionsRouter.patch('/:id', (req, res) => {
 // ---- 删除 ----
 /** DELETE /api/productions/:id - 删除成片（非管理员仅限自己的） */
 productionsRouter.delete('/:id', (req, res) => {
-  const member = (req as AuthedRequest).member!;
+  const user = (req as AuthedRequest).user!;
   const id = Number(req.params.id);
   const cur = db.prepare(`SELECT created_by FROM productions WHERE id = ?`).get(id) as
     | { created_by: number | null }
@@ -132,7 +132,7 @@ productionsRouter.delete('/:id', (req, res) => {
     res.status(404).json({ error: '成片不存在' });
     return;
   }
-  if (member.is_admin !== 1 && cur.created_by !== member.id) {
+  if (user.role !== 'admin' && cur.created_by !== user.id) {
     res.status(403).json({ error: '只能删除自己创建的成片' });
     return;
   }
@@ -144,7 +144,7 @@ productionsRouter.delete('/:id', (req, res) => {
 // ---- 素材关联 ----
 /** POST /api/productions/:id/assets - 添加素材到成片（素材使用次数 +1） */
 productionsRouter.post('/:id/assets', (req, res) => {
-  const member = (req as AuthedRequest).member;
+  const user = (req as AuthedRequest).user;
   const { assetIds, note } = (req.body ?? {}) as { assetIds?: number[]; note?: string };
   const pid = Number(req.params.id);
   const exists = db.prepare(`SELECT id FROM productions WHERE id = ?`).get(pid);
@@ -161,7 +161,7 @@ productionsRouter.post('/:id/assets', (req, res) => {
   );
   let added = 0;
   for (const aid of [...new Set(assetIds)]) {
-    const r = insert.run(pid, Number(aid), note ?? null, member?.id ?? null);
+    const r = insert.run(pid, Number(aid), note ?? null, user?.id ?? null);
     added += Number(r.changes);
   }
   if (added > 0) notifyChanged('assets');

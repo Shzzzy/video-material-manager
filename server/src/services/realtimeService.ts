@@ -3,9 +3,8 @@
  * 前端收到事件后刷新列表/统计，实现多人实时同步
  */
 import type { Response } from 'express';
-import type { Member } from './authService.js';
 
-type Listener = { res: Response; member: Member | null };
+type Listener = { res: Response; nickname?: string };
 
 const listeners = new Set<Listener>();
 

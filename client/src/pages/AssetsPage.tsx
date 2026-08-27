@@ -1,5 +1,5 @@
 /** 素材库页面：状态 Tab + 统计概览 + 网格 + 批量操作 + 空状态 */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CheckSquare,
@@ -33,6 +33,7 @@ export function AssetsPage() {
     setUploadOpen,
     setUploadMode,
     openAsset,
+    assetDrawerId,
     assetSearch,
     assetTagIds,
     assetStatus,
@@ -50,6 +51,10 @@ export function AssetsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [batchTagOpen, setBatchTagOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // 待标注视图下"本次已处理"的素材（打标后保留在列表，便于连续操作）
+  const [processedAssets, setProcessedAssets] = useState<Map<number, Asset>>(new Map());
+  const lastDrawerId = useRef<number | null>(null);
 
   const load = useCallback(
     async (search: string, tagIds: number[], status: 'new' | 'organized' | 'used' | null) => {
@@ -83,6 +88,30 @@ export function AssetsPage() {
     setAssetStatus(null);
   };
 
+  // 状态筛选变化：清空"已处理"缓存（重新进入待标注时重新开始）
+  useEffect(() => {
+    setProcessedAssets(new Map());
+  }, [assetStatus, assetSearch, assetTagIds]);
+
+  // 素材详情抽屉关闭：若处于待标注视图，把抽屉打开过的素材加入已处理缓存（若它已被打标移出列表）
+  useEffect(() => {
+    if (assetDrawerId) {
+      lastDrawerId.current = assetDrawerId;
+      return;
+    }
+    const id = lastDrawerId.current;
+    if (id == null) return;
+    lastDrawerId.current = null;
+    if (assetStatus !== 'new') return;
+    void api.getAsset(id).then((d) => {
+      setProcessedAssets((prev) => {
+        const next = new Map(prev);
+        next.set(id, d);
+        return next;
+      });
+    }).catch(() => {});
+  }, [assetDrawerId, assetStatus]);
+
   // ---- 批量选择 ----
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -109,6 +138,31 @@ export function AssetsPage() {
     () => assets.filter((a) => selectedIds.has(a.id)),
     [assets, selectedIds],
   );
+
+  /** 展示列表：待标注视图下合并"本次已处理"素材（仍在 API 结果中的以 API 为准） */
+  const displayAssets = useMemo(() => {
+    const merged = new Map<number, Asset>();
+    for (const a of assets) merged.set(a.id, a);
+    for (const [id, a] of processedAssets) {
+      if (!merged.has(id)) merged.set(id, a);
+    }
+    return [...merged.values()];
+  }, [assets, processedAssets]);
+
+  /** 打标成功回调：加入已处理缓存 */
+  const markProcessed = useCallback((asset: Asset) => {
+    setProcessedAssets((prev) => {
+      const next = new Map(prev);
+      next.set(asset.id, asset);
+      return next;
+    });
+  }, []);
+
+  /** 批量打标应用后：将选中素材标记为已处理 */
+  const onBatchTagDone = useCallback(() => {
+    for (const a of selectedAssets) markProcessed(a);
+    exitSelectMode();
+  }, [selectedAssets, markProcessed]);
 
   const emptyState = useMemo(() => {
     if (assets.length > 0) return null;
@@ -231,33 +285,32 @@ export function AssetsPage() {
           </p>
         )}
 
-        {loading && assets.length === 0 ? (
+        {loading && displayAssets.length === 0 ? (
           <div className="flex items-center justify-center gap-2 py-24 text-ink-400">
             <Loader2 size={16} className="animate-spin" />
             加载中…
           </div>
-        ) : assets.length > 0 ? (
-          <motion.div layout className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            <AnimatePresence mode="popLayout">
-              {assets.map((a, i) => (
-                <motion.div
-                  key={a.id}
-                  layout
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.25, delay: Math.min(i * 0.02, 0.3) }}
-                >
-                  <AssetCard
-                    asset={a}
-                    onOpen={openAsset}
-                    selectable={selectMode}
-                    selected={selectedIds.has(a.id)}
-                    onToggleSelect={toggleSelect}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+        ) : displayAssets.length > 0 ? (
+          /* 筛选签名作为 key：切换筛选时整体淡入重挂载，避免卡片位置飞行动画 */
+          <motion.div
+            key={`${assetStatus ?? 'all'}-${assetSearch}-${assetTagIds.join(',')}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+          >
+            {displayAssets.map((a) => (
+              <AssetCard
+                key={a.id}
+                asset={a}
+                onOpen={openAsset}
+                selectable={selectMode}
+                selected={selectedIds.has(a.id)}
+                onToggleSelect={toggleSelect}
+                processed={assetStatus === 'new' && processedAssets.has(a.id)}
+                onTagSaved={markProcessed}
+              />
+            ))}
           </motion.div>
         ) : (
           emptyState
@@ -305,7 +358,7 @@ export function AssetsPage() {
         assetCodes={selectedAssets.map((a) => a.code)}
         open={batchTagOpen}
         onClose={() => setBatchTagOpen(false)}
-        onDone={exitSelectMode}
+        onDone={onBatchTagDone}
       />
 
       {/* 批量删除确认 */}

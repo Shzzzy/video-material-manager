@@ -1,6 +1,6 @@
 /** 素材卡片：缩略图 + 编号 + 时长 + 标签 + 使用次数 + 快速打标（网格单元） */
 import { memo, useState } from 'react';
-import { AlertTriangle, Eye, Play, Tags } from 'lucide-react';
+import { AlertTriangle, Check, Eye, Play, Tags } from 'lucide-react';
 import type { Asset } from '../types';
 import { api, formatDuration, formatSize, thumbUrl } from '../api';
 import { useStore } from '../store';
@@ -13,6 +13,10 @@ interface AssetCardProps {
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: number) => void;
+  /** 本次会话已打标（待标注视图下保留展示） */
+  processed?: boolean;
+  /** 打标保存成功回调（用于待标注视图保留素材） */
+  onTagSaved?: (asset: Asset) => void;
 }
 
 export const AssetCard = memo(function AssetCard({
@@ -21,6 +25,8 @@ export const AssetCard = memo(function AssetCard({
   selectable,
   selected,
   onToggleSelect,
+  processed = false,
+  onTagSaved,
 }: AssetCardProps) {
   const { bumpAssets } = useStore();
   const [tagOpen, setTagOpen] = useState(false);
@@ -41,8 +47,28 @@ export const AssetCard = memo(function AssetCard({
     if (saving) return;
     setSaving(true);
     try {
-      await api.updateAsset(asset.id, { tagIds });
+      const updated = await api.updateAsset(asset.id, { tagIds });
       bumpAssets(); // 刷新列表，卡片标签同步
+      // 转换后端标签格式（category_id/category_name → category 对象）后回传
+      onTagSaved?.({
+        ...asset,
+        ...updated,
+        tags: (
+          updated.tags as Array<{
+            id: number;
+            name: string;
+            color: string;
+            category_id?: number;
+            category_name?: string;
+            category?: { id: number; name: string };
+          }>
+        ).map((t) => ({
+          id: t.id,
+          name: t.name,
+          color: t.color,
+          category: t.category ?? { id: t.category_id ?? 0, name: t.category_name ?? '' },
+        })),
+      });
     } catch {
       /* 保存失败保持原状 */
     } finally {
@@ -86,11 +112,15 @@ export const AssetCard = memo(function AssetCard({
           {asset.code}
         </span>
 
-        {/* 右上（黄金3秒时在下方）：待标注角标 */}
-        {pending && !selectable && (
-          <span
-            className="absolute top-2 right-2 flex items-center gap-0.5 rounded-md bg-cream-50/95 px-1.5 py-0.5 text-[10px] font-semibold text-ink-500 shadow-card backdrop-blur-sm"
-          >
+        {/* 右上角标：已处理（本次会话） / 待标注 */}
+        {processed && !selectable && (
+          <span className="absolute top-2 right-2 flex items-center gap-0.5 rounded-md bg-forest-600/95 px-1.5 py-0.5 text-[10px] font-semibold text-cream-50 shadow-card backdrop-blur-sm">
+            <Check size={9} strokeWidth={3.5} />
+            已处理
+          </span>
+        )}
+        {!processed && pending && !selectable && (
+          <span className="absolute top-2 right-2 flex items-center gap-0.5 rounded-md bg-cream-50/95 px-1.5 py-0.5 text-[10px] font-semibold text-ink-500 shadow-card backdrop-blur-sm">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
             待标注
           </span>
@@ -105,7 +135,7 @@ export const AssetCard = memo(function AssetCard({
       </div>
 
       {/* 信息区 */}
-      <div className="px-2.5 py-2">
+      <div className={`px-2.5 py-2 ${processed ? 'opacity-75' : ''}`}>
         <div className="flex items-center gap-1">
           <p className="truncate text-[12px] font-medium text-ink-900" title={asset.filename}>
             {asset.filename}

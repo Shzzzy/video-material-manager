@@ -133,11 +133,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      setMember(await api.me());
+      const user = await api.me();
+      setMember(user);
+      // 登录成功：加载分类/适配器等登录后数据
+      if (user) {
+        void reloadCategories();
+        void reloadAdapters();
+      }
     } catch {
       setMember(null); // 401 时 token 已被清理
     }
-  }, []);
+  }, [reloadCategories, reloadAdapters]);
 
   // 挂载：校验成员身份
   useEffect(() => {

@@ -106,7 +106,7 @@ export function TagsPage() {
                   </button>
                   <button
                     onClick={() => void removeCategory(cat)}
-                    className="rounded-md p-1 text-ink-300 hover:bg-[#fdf0ec] hover:text-alert"
+                    className="rounded-md p-1 text-ink-300 hover:bg-alert-soft hover:text-alert"
                   >
                     <Trash2 size={13} />
                   </button>

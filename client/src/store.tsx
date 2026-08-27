@@ -9,11 +9,18 @@ import {
   type ReactNode,
 } from 'react';
 import { api } from './api';
+import { applyTheme, DEFAULT_THEME, loadTheme, type ThemeId } from './themes';
 import type { AdapterStatus, Category } from './types';
 
 interface StoreState {
   categories: Category[];
   adapters: AdapterStatus[];
+  /** 当前主题 */
+  theme: ThemeId;
+  /** 主题切换面板 */
+  themeDialogOpen: boolean;
+  setTheme: (id: ThemeId) => void;
+  setThemeDialogOpen: (v: boolean) => void;
   /** 上传/扫描对话框 */
   uploadOpen: boolean;
   /** 素材详情抽屉 */
@@ -44,6 +51,8 @@ const StoreCtx = createContext<StoreState | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [adapters, setAdapters] = useState<AdapterStatus[]>([]);
+  const [theme, setThemeState] = useState<ThemeId>(() => loadTheme());
+  const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [assetDrawerId, setAssetDrawerId] = useState<number | null>(null);
   const [productionDrawerId, setProductionDrawerId] = useState<number | null>(null);
@@ -103,11 +112,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void reloadAdapters();
   }, [reloadCategories, reloadAdapters]);
 
+  // 主题应用：挂载时恢复持久化主题
+  const setTheme = useCallback((id: ThemeId) => {
+    setThemeState(id);
+    applyTheme(id);
+  }, []);
+
+  useEffect(() => {
+    applyTheme(theme);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <StoreCtx.Provider
       value={{
         categories,
         adapters,
+        theme,
+        themeDialogOpen,
+        setTheme,
+        setThemeDialogOpen,
         uploadOpen,
         assetDrawerId,
         productionDrawerId,

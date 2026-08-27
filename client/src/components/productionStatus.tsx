@@ -12,8 +12,8 @@ export type ProductionStatusKey = (typeof PRODUCTION_STATUSES)[number]['key'];
 /** 状态徽标样式映射 */
 const STATUS_STYLE: Record<ProductionStatusKey, { cls: string; dot: string }> = {
   draft: { cls: 'bg-ink-900/6 text-ink-500', dot: 'bg-ink-300' },
-  editing: { cls: 'bg-[#e8f0f6] text-[#2d6a8f]', dot: 'bg-[#2d6a8f]' },
-  pending: { cls: 'bg-gold-soft text-[#8a6a1d]', dot: 'bg-gold' },
+  editing: { cls: 'bg-info-soft text-info', dot: 'bg-info' },
+  pending: { cls: 'bg-gold-soft text-gold-ink', dot: 'bg-gold' },
   published: { cls: 'bg-forest-100 text-forest-700', dot: 'bg-forest-600' },
 };
 

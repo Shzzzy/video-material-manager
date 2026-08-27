@@ -252,7 +252,7 @@ export function UploadDialog() {
                 <span className="truncate text-ink-700">{r.filename}</span>
                 <span
                   className={`ml-auto shrink-0 ${
-                    r.ok ? (r.duplicated ? 'text-[#8a6a1d]' : 'text-forest-600') : 'text-alert'
+                    r.ok ? (r.duplicated ? 'text-gold-ink' : 'text-forest-600') : 'text-alert'
                   }`}
                 >
                   {r.msg}
@@ -317,7 +317,7 @@ export function UploadDialog() {
           </div>
         )}
         {scanProg?.phase === 'error' && (
-          <div className="fade-in mt-4 flex items-center gap-2 rounded-lg bg-[#fdf0ec] px-3 py-2.5 text-[12.5px] text-alert">
+          <div className="fade-in mt-4 flex items-center gap-2 rounded-lg bg-alert-soft px-3 py-2.5 text-[12.5px] text-alert">
             <XCircle size={14} />
             {scanProg.error ?? '扫描失败'}
           </div>

@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, subtitle, children, width = 560 }:
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 遮罩 */}
       <div
-        className="fade-in absolute inset-0 bg-forest-950/40 backdrop-blur-[2px]"
+        className="fade-in absolute inset-0 overlay-mask"
         onClick={onClose}
       />
       {/* 面板 */}

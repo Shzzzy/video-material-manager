@@ -1,6 +1,7 @@
-/** 最左极窄图标导航栏：深色，品牌 Logo + 各板块入口 */
+/** 最左极窄图标导航栏：深色，品牌 Logo + 各板块入口 + 主题切换 */
 import { NavLink } from 'react-router-dom';
-import { Clapperboard, Film, History, Layers, Settings } from 'lucide-react';
+import { Clapperboard, Film, History, Layers, Palette } from 'lucide-react';
+import { useStore } from '../../store';
 
 const items = [
   { to: '/assets', icon: Film, label: '素材库' },
@@ -10,6 +11,7 @@ const items = [
 ];
 
 export function IconRail() {
+  const { setThemeDialogOpen } = useStore();
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-1.5 bg-forest-950 py-3">
       {/* 品牌 Logo */}
@@ -40,14 +42,14 @@ export function IconRail() {
 
       <div className="flex-1" />
 
-      {/* 底部设置入口 */}
-      <NavLink
-        to="/tags"
-        title="设置与标签"
+      {/* 底部：主题切换 */}
+      <button
+        onClick={() => setThemeDialogOpen(true)}
+        title="切换主题"
         className="flex h-9 w-9 items-center justify-center rounded-lg text-forest-300/50 transition-colors hover:bg-white/8 hover:text-cream-100"
       >
-        <Settings size={16} strokeWidth={2} />
-      </NavLink>
+        <Palette size={16} strokeWidth={2} />
+      </button>
     </nav>
   );
 }

@@ -62,7 +62,7 @@ export function AssetDrawer() {
   return (
     <div className="fixed inset-0 z-50">
       {/* 遮罩 */}
-      <div className="fade-in absolute inset-0 bg-forest-950/30 backdrop-blur-[2px]" onClick={closeDrawer} />
+      <div className="fade-in absolute inset-0 overlay-mask-soft" onClick={closeDrawer} />
       {/* 抽屉面板 */}
       <div className="rise-in absolute top-0 right-0 flex h-full w-[520px] max-w-[92vw] flex-col bg-cream-50 shadow-drawer">
         {/* 头部 */}
@@ -187,7 +187,7 @@ export function AssetDrawer() {
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] text-ink-400 transition-colors hover:bg-[#fdf0ec] hover:text-alert"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] text-ink-400 transition-colors hover:bg-alert-soft hover:text-alert"
             >
               <Trash2 size={13} />
               删除素材

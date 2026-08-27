@@ -10,6 +10,7 @@ import { TagsPage } from './pages/TagsPage';
 import { UploadDialog } from './components/UploadDialog';
 import { AssetDrawer } from './components/AssetDrawer';
 import { ProductionDrawer } from './components/ProductionDrawer';
+import { ThemeDialog } from './components/ThemeDialog';
 import { StoreProvider } from './store';
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
       <UploadDialog />
       <AssetDrawer />
       <ProductionDrawer />
+      <ThemeDialog />
     </StoreProvider>
   );
 }

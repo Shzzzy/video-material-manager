@@ -180,7 +180,7 @@ export function AssetsPage() {
                   {t.key === 'new' && stats.pendingCount > 0 && (
                     <span
                       className={`rounded px-1.5 text-[10px] tabular ${
-                        active ? 'bg-cream-50/20 text-cream-50' : 'bg-gold-soft text-[#8a6a1d]'
+                        active ? 'bg-cream-50/20 text-cream-50' : 'bg-gold-soft text-gold-ink'
                       }`}
                     >
                       {stats.pendingCount}
@@ -201,7 +201,7 @@ export function AssetsPage() {
             ) : (
               <button
                 onClick={exitSelectMode}
-                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11.5px] text-ink-400 transition-colors hover:bg-[#fdf0ec] hover:text-alert"
+                className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11.5px] text-ink-400 transition-colors hover:bg-alert-soft hover:text-alert"
               >
                 <X size={12} />
                 退出多选
@@ -282,7 +282,7 @@ export function AssetsPage() {
               <span className="mx-1 h-4 w-px bg-white/15" />
               <button
                 onClick={() => setConfirmDelete(true)}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] text-[#f2a08c] transition-colors hover:bg-white/10"
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] text-alert-bright transition-colors hover:bg-white/10"
               >
                 <Trash2 size={12} />
                 删除
@@ -306,7 +306,7 @@ export function AssetsPage() {
         {confirmDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div
-              className="fade-in absolute inset-0 bg-forest-950/40 backdrop-blur-[2px]"
+              className="fade-in absolute inset-0 overlay-mask"
               onClick={() => setConfirmDelete(false)}
             />
             <div className="rise-in relative w-96 rounded-2xl bg-cream-50 p-5 shadow-float">

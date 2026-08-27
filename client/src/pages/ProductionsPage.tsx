@@ -187,7 +187,7 @@ export function ProductionsPage() {
                         e.stopPropagation();
                         void remove(p.id);
                       }}
-                      className="rounded-lg p-1.5 text-ink-300 opacity-0 transition-all hover:bg-[#fdf0ec] hover:text-alert group-hover:opacity-100"
+                      className="rounded-lg p-1.5 text-ink-300 opacity-0 transition-all hover:bg-alert-soft hover:text-alert group-hover:opacity-100"
                     >
                       <Trash2 size={13} />
                     </button>

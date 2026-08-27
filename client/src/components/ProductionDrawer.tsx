@@ -78,7 +78,7 @@ export function ProductionDrawer() {
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="fade-in absolute inset-0 bg-forest-950/30 backdrop-blur-[2px]" onClick={closeDrawer} />
+      <div className="fade-in absolute inset-0 overlay-mask-soft" onClick={closeDrawer} />
       <div className="rise-in absolute top-0 right-0 flex h-full w-[560px] max-w-[94vw] flex-col bg-cream-50 shadow-drawer">
         {/* 头部 */}
         <div className="flex items-center gap-3 border-b border-ink-900/6 px-5 py-3.5">
@@ -194,7 +194,7 @@ export function ProductionDrawer() {
                           </div>
                           <button
                             onClick={() => void removeAsset(a.relation_id)}
-                            className="rounded-lg p-1.5 text-ink-300 opacity-0 transition-all hover:bg-[#fdf0ec] hover:text-alert group-hover:opacity-100"
+                            className="rounded-lg p-1.5 text-ink-300 opacity-0 transition-all hover:bg-alert-soft hover:text-alert group-hover:opacity-100"
                             title="移除引用"
                           >
                             <Trash2 size={13} />

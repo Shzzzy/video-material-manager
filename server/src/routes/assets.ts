@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
+import { unlinkSync } from 'node:fs';
 import { UPLOAD_DIR } from '../lib/db.js';
 import {
   registerAsset,
@@ -47,8 +48,16 @@ assetsRouter.post('/upload', upload.array('files'), async (req, res) => {
         continue;
       }
       try {
-        const asset = await registerAsset(f.path, f.originalname, 'upload');
-        results.push({ filename: f.originalname, asset });
+        const { asset, duplicated } = await registerAsset(f.path, f.originalname, 'upload');
+        if (duplicated) {
+          // 内容重复：清理刚上传的临时文件，避免磁盘垃圾
+          try {
+            unlinkSync(f.path);
+          } catch {
+            /* 忽略清理失败 */
+          }
+        }
+        results.push({ filename: f.originalname, asset, duplicated });
       } catch (e) {
         results.push({
           filename: f.originalname,

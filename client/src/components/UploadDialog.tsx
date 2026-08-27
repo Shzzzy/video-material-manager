@@ -1,6 +1,6 @@
 /** 导入素材对话框：浏览器上传（带进度） / 服务器文件夹扫描（SSE 进度） */
 import { useCallback, useRef, useState } from 'react';
-import { CheckCircle2, FileUp, FolderSearch, Loader2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileUp, FolderSearch, Loader2, XCircle } from 'lucide-react';
 import { Modal } from './Modal';
 import { useStore } from '../store';
 import { api } from '../api';
@@ -20,7 +20,9 @@ export function UploadDialog() {
   const [mode, setMode] = useState<'upload' | 'scan'>('upload');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [uploadResults, setUploadResults] = useState<Array<{ filename: string; ok: boolean; msg: string }>>([]);
+  const [uploadResults, setUploadResults] = useState<
+    Array<{ filename: string; ok: boolean; duplicated?: boolean; msg: string }>
+  >([]);
   const [scanFolder, setScanFolder] = useState('');
   const [scanning, setScanning] = useState(false);
   const [scanProg, setScanProg] = useState<ScanProgress | null>(null);
@@ -49,7 +51,12 @@ export function UploadDialog() {
           results.map((r) => ({
             filename: r.filename,
             ok: !r.error && !!r.asset,
-            msg: r.error ?? (r.asset ? `已入库 ${r.asset.code}` : '已存在（去重）'),
+            duplicated: r.duplicated,
+            msg: r.error
+              ? r.error
+              : r.duplicated
+                ? `内容重复，已关联 ${r.asset?.code}（原文件 ${r.asset?.filename}）`
+                : `已入库 ${r.asset?.code}`,
           })),
         );
         bumpAssets();
@@ -221,12 +228,20 @@ export function UploadDialog() {
             {uploadResults.map((r, i) => (
               <div key={i} className="flex items-center gap-2 text-[12px]">
                 {r.ok ? (
-                  <CheckCircle2 size={13} className="shrink-0 text-forest-600" />
+                  r.duplicated ? (
+                    <AlertTriangle size={13} className="shrink-0 text-gold" />
+                  ) : (
+                    <CheckCircle2 size={13} className="shrink-0 text-forest-600" />
+                  )
                 ) : (
                   <XCircle size={13} className="shrink-0 text-alert" />
                 )}
                 <span className="truncate text-ink-700">{r.filename}</span>
-                <span className={`ml-auto shrink-0 ${r.ok ? 'text-forest-600' : 'text-alert'}`}>
+                <span
+                  className={`ml-auto shrink-0 ${
+                    r.ok ? (r.duplicated ? 'text-[#8a6a1d]' : 'text-forest-600') : 'text-alert'
+                  }`}
+                >
                   {r.msg}
                 </span>
               </div>

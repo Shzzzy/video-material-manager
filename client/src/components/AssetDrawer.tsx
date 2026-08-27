@@ -26,6 +26,16 @@ export function AssetDrawer() {
     });
   }, [assetDrawerId]);
 
+  // ESC 关闭抽屉
+  useEffect(() => {
+    if (!assetDrawerId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDrawer();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [assetDrawerId, closeDrawer]);
+
   if (!assetDrawerId || !detail) return null;
 
   const videoSrc = videoUrl(detail);

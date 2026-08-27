@@ -56,10 +56,11 @@ export const api = {
   deleteAsset: (id: number) =>
     request<{ ok: boolean }>(`/api/assets/${id}`, { method: 'DELETE' }),
 
-  /** 上传素材（XHR 带进度回调） */
+  /** 上传素材（XHR 带进度回调）；duplicated=true 表示内容与已有素材重复（指纹命中） */
   uploadAssets: (files: File[], onProgress: (done: number, total: number) => void) =>
-    new Promise<{ results: Array<{ filename: string; asset?: Asset; error?: string }> }>(
-      (resolve, reject) => {
+    new Promise<{
+      results: Array<{ filename: string; asset?: Asset; duplicated?: boolean; error?: string }>;
+    }>((resolve, reject) => {
         const form = new FormData();
         for (const f of files) form.append('files', f);
         const xhr = new XMLHttpRequest();

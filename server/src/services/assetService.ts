@@ -25,12 +25,19 @@ export interface AssetRow {
   updated_at: string;
 }
 
+/** 素材入库结果 */
+export interface RegisterResult {
+  asset: AssetRow;
+  /** 是否命中已有素材（内容重复，按 SHA-256 指纹判断） */
+  duplicated: boolean;
+}
+
 /** 将已存在的视频文件登记入库（上传 / 扫描共用） */
 export async function registerAsset(
   filePath: string,
   filename: string,
   source: 'upload' | 'folder',
-): Promise<AssetRow> {
+): Promise<RegisterResult> {
   const absPath = filePath.startsWith('/') ? filePath : `${UPLOAD_DIR}/${filePath}`;
 
   // 1. 计算指纹，去重
@@ -38,7 +45,7 @@ export async function registerAsset(
   const exist = db.prepare(`SELECT * FROM assets WHERE sha256 = ?`).get(sha256) as
     | AssetRow
     | undefined;
-  if (exist) return exist; // 已存在：直接返回，不重复入库
+  if (exist) return { asset: exist, duplicated: true }; // 已存在：返回原素材并标记重复
 
   // 2. 读取元数据
   const meta = await probeVideo(absPath);
@@ -60,7 +67,8 @@ export async function registerAsset(
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(code, filename, absPath, size, meta.duration, meta.width, meta.height, meta.fps, sha256, thumb, source);
-  return db.prepare(`SELECT * FROM assets WHERE id = ?`).get(info.lastInsertRowid) as unknown as AssetRow;
+  const asset = db.prepare(`SELECT * FROM assets WHERE id = ?`).get(info.lastInsertRowid) as unknown as AssetRow;
+  return { asset, duplicated: false };
 }
 
 export interface AssetFilters {

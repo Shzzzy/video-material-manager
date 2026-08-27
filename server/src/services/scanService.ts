@@ -68,10 +68,10 @@ export async function scanFolder(rootDir: string, onProgress: ProgressHandler): 
         skipped,
       });
       try {
-        const asset = await registerAsset(file, file.split('/').pop() ?? file, 'folder');
-        if (asset.sha256) skipped += 0; // 已存在时 registerAsset 返回旧记录
-        // 判断是否为新增：比较入库前后的总数变化
-        added++;
+        const { duplicated } = await registerAsset(file, file.split('/').pop() ?? file, 'folder');
+        // duplicated：内容重复（指纹命中），计入跳过
+        if (duplicated) skipped++;
+        else added++;
       } catch {
         skipped++;
       }

@@ -1,17 +1,11 @@
-/** 主侧边栏：板块标题 + 分类标签快捷筛选 */
+/** 主侧边栏：板块标题 + 分类标签快捷筛选（全局唯一，筛选状态来自 store） */
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { ChevronDown, FolderTree, Plus, Sparkles } from 'lucide-react';
 import { useStore } from '../../store';
 
-interface SidebarProps {
-  /** 选中的标签 id 集合（素材库筛选用） */
-  selectedTagIds?: number[];
-  onToggleTag?: (tagId: number) => void;
-}
-
-export function Sidebar({ selectedTagIds = [], onToggleTag }: SidebarProps) {
-  const { categories, setUploadOpen } = useStore();
+export function Sidebar() {
+  const { categories, setUploadOpen, assetTagIds, setAssetTagIds } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
@@ -19,6 +13,14 @@ export function Sidebar({ selectedTagIds = [], onToggleTag }: SidebarProps) {
   // 仅素材库页面展示分类筛选
   const showFilters = location.pathname === '/assets' || location.pathname === '/';
   const isAssets = showFilters;
+
+  const toggleTag = (tagId: number) => {
+    setAssetTagIds(
+      assetTagIds.includes(tagId)
+        ? assetTagIds.filter((t) => t !== tagId)
+        : [...assetTagIds, tagId],
+    );
+  };
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-ink-900/6 bg-cream-200/70 backdrop-blur">
@@ -56,7 +58,7 @@ export function Sidebar({ selectedTagIds = [], onToggleTag }: SidebarProps) {
 
           {categories.map((cat) => {
             const open = !collapsed[cat.id];
-            const hasActive = cat.tags.some((t) => selectedTagIds.includes(t.id));
+            const hasActive = cat.tags.some((t) => assetTagIds.includes(t.id));
             return (
               <div key={cat.id} className="mb-0.5">
                 <button
@@ -79,11 +81,11 @@ export function Sidebar({ selectedTagIds = [], onToggleTag }: SidebarProps) {
                 {open && (
                   <div className="ml-5 space-y-px border-l border-ink-900/8 pl-2 pb-1 pt-0.5">
                     {cat.tags.map((t) => {
-                      const active = selectedTagIds.includes(t.id);
+                      const active = assetTagIds.includes(t.id);
                       return (
                         <button
                           key={t.id}
-                          onClick={() => onToggleTag?.(t.id)}
+                          onClick={() => toggleTag(t.id)}
                           className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[12px] transition-all duration-150 ${
                             active
                               ? 'bg-forest-600 font-medium text-cream-50'

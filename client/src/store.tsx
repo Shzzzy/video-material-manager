@@ -1,5 +1,13 @@
-/** 全局轻量状态：分类数据、适配器状态、UI 开关（对话框/抽屉） */
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+/** 全局轻量状态：分类数据、适配器状态、UI 开关（对话框/抽屉）、素材库筛选 */
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { api } from './api';
 import type { AdapterStatus, Category } from './types';
 
@@ -14,6 +22,13 @@ interface StoreState {
   productionDrawerId: number | null;
   /** 刷新素材列表的计数器（+1 触发重新拉取） */
   assetsVersion: number;
+  /** 素材库筛选状态（顶栏与侧边栏共用，避免重复渲染） */
+  assetSearch: string;
+  assetGolden3s: boolean;
+  assetTagIds: number[];
+  setAssetSearch: (v: string) => void;
+  setAssetGolden3s: (v: boolean) => void;
+  setAssetTagIds: (v: number[]) => void;
   reloadCategories: () => Promise<void>;
   reloadAdapters: () => Promise<void>;
   setUploadOpen: (v: boolean) => void;
@@ -32,6 +47,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [assetDrawerId, setAssetDrawerId] = useState<number | null>(null);
   const [productionDrawerId, setProductionDrawerId] = useState<number | null>(null);
   const [assetsVersion, setAssetsVersion] = useState(0);
+  const [assetSearch, setAssetSearchState] = useState('');
+  const [assetGolden3s, setAssetGolden3sState] = useState(false);
+  const [assetTagIds, setAssetTagIdsState] = useState<number[]>([]);
+  /** 搜索防抖：停止输入 300ms 后触发刷新 */
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const bumpAssets = useCallback(() => setAssetsVersion((v) => v + 1), []);
+
+  const setAssetSearch = useCallback(
+    (v: string) => {
+      setAssetSearchState(v);
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+      searchTimer.current = setTimeout(bumpAssets, 300);
+    },
+    [bumpAssets],
+  );
+
+  const setAssetGolden3s = useCallback(
+    (v: boolean) => {
+      setAssetGolden3sState(v);
+      bumpAssets();
+    },
+    [bumpAssets],
+  );
+
+  const setAssetTagIds = useCallback(
+    (v: number[]) => {
+      setAssetTagIdsState(v);
+      bumpAssets();
+    },
+    [bumpAssets],
+  );
 
   const reloadCategories = useCallback(async () => {
     try {
@@ -54,8 +101,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void reloadAdapters();
   }, [reloadCategories, reloadAdapters]);
 
-  const bumpAssets = useCallback(() => setAssetsVersion((v) => v + 1), []);
-
   return (
     <StoreCtx.Provider
       value={{
@@ -65,6 +110,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         assetDrawerId,
         productionDrawerId,
         assetsVersion,
+        assetSearch,
+        assetGolden3s,
+        assetTagIds,
+        setAssetSearch,
+        setAssetGolden3s,
+        setAssetTagIds,
         reloadCategories,
         reloadAdapters,
         setUploadOpen,

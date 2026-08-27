@@ -1,58 +1,61 @@
-/** 素材库页面：统计概览 + 网格 + 空状态 + 上传入口 */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+/** 素材库页面：统计概览 + 网格 + 空状态 + 上传入口（布局组件由 App 全局渲染，此处只渲染内容） */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Clapperboard, Film, FolderOpen, History, Loader2, Sparkles, UploadCloud } from 'lucide-react';
 import type { Asset, OverviewStats } from '../types';
-import { api, formatDuration, thumbUrl } from '../api';
+import { api, formatDuration } from '../api';
 import { useStore } from '../store';
-import { TopBar } from '../components/layout/TopBar';
-import { Sidebar } from '../components/layout/Sidebar';
 import { AssetCard } from '../components/AssetCard';
 
 export function AssetsPage() {
-  const { assetsVersion, setUploadOpen, openAsset } = useStore();
+  const {
+    assetsVersion,
+    setUploadOpen,
+    openAsset,
+    assetSearch,
+    assetGolden3s,
+    assetTagIds,
+    setAssetSearch,
+    setAssetGolden3s,
+    setAssetTagIds,
+  } = useStore();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [golden3s, setGolden3s] = useState(false);
-  const [tagIds, setTagIds] = useState<number[]>([]);
   const [stats, setStats] = useState<OverviewStats | null>(null);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(
-    async (q = search, g = golden3s, tags = tagIds) => {
+    async (search: string, golden3s: boolean, tagIds: number[]) => {
       setLoading(true);
       try {
-        const data = await api.listAssets({ search: q, golden3sOnly: g, tagIds: tags, pageSize: 120 });
+        const data = await api.listAssets({
+          search,
+          golden3sOnly: golden3s,
+          tagIds,
+          pageSize: 120,
+        });
         setAssets(data.items);
         setTotal(data.total);
       } finally {
         setLoading(false);
       }
     },
-    [search, golden3s, tagIds],
+    [],
   );
 
+  // 素材数据变化（上传/删除/筛选/引用）时重新加载
   useEffect(() => {
-    void load();
+    void load(assetSearch, assetGolden3s, assetTagIds);
     void api.overview().then(setStats);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetsVersion]);
+  }, [assetsVersion, assetSearch, assetGolden3s, assetTagIds, load]);
 
-  const onSearch = (v: string) => {
-    setSearch(v);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => void load(v, golden3s, tagIds), 250);
+  const hasFilter = assetSearch.trim() !== '' || assetGolden3s || assetTagIds.length > 0;
+
+  const clearFilters = () => {
+    setAssetSearch('');
+    setAssetGolden3s(false);
+    setAssetTagIds([]);
   };
-
-  const toggleTag = (id: number) => {
-    const next = tagIds.includes(id) ? tagIds.filter((t) => t !== id) : [...tagIds, id];
-    setTagIds(next);
-    void load(search, golden3s, next);
-  };
-
-  const hasFilter = search.trim() !== '' || golden3s || tagIds.length > 0;
 
   const emptyState = useMemo(() => {
     if (assets.length > 0) return null;
@@ -92,81 +95,68 @@ export function AssetsPage() {
   }, [assets.length, hasFilter, setUploadOpen]);
 
   return (
-    <div className="flex h-full">
-      {/* 侧边栏：分类筛选 */}
-      <Sidebar selectedTagIds={tagIds} onToggleTag={toggleTag} />
-
-      {/* 主区域 */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar
-          search={search}
-          onSearch={onSearch}
-          golden3sOnly={golden3s}
-          onGolden3s={(v) => {
-            setGolden3s(v);
-            void load(search, v, tagIds);
-          }}
-          showAssetTools
-        />
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* 统计概览条 */}
-          {stats && assets.length > 0 && (
-            <div className="sticky top-0 z-10 border-b border-ink-900/6 bg-cream-100/90 px-6 py-3 backdrop-blur">
-              <div className="flex items-center gap-6">
-                <StatItem icon={<Film size={13} />} label="素材总数" value={stats.assetTotal} />
-                <StatItem icon={<Clapperboard size={13} />} label="成片数" value={stats.productionTotal} />
-                <StatItem icon={<History size={13} />} label="累计使用" value={stats.usageTotal} />
-                <StatItem icon={<Sparkles size={13} />} label="黄金3秒" value={stats.golden3sCount} />
-                <div className="ml-auto text-[11.5px] text-ink-400">
-                  素材总时长{' '}
-                  <span className="tabular font-medium text-ink-700">
-                    {formatDuration(stats.totalDuration)}
-                  </span>
-                </div>
-              </div>
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      {/* 统计概览条 */}
+      {stats && assets.length > 0 && (
+        <div className="sticky top-0 z-10 border-b border-ink-900/6 bg-cream-100/90 px-6 py-3 backdrop-blur">
+          <div className="flex items-center gap-6">
+            <StatItem icon={<Film size={13} />} label="素材总数" value={stats.assetTotal} />
+            <StatItem icon={<Clapperboard size={13} />} label="成片数" value={stats.productionTotal} />
+            <StatItem icon={<History size={13} />} label="累计使用" value={stats.usageTotal} />
+            <StatItem icon={<Sparkles size={13} />} label="黄金3秒" value={stats.golden3sCount} />
+            <div className="ml-auto text-[11.5px] text-ink-400">
+              素材总时长{' '}
+              <span className="tabular font-medium text-ink-700">
+                {formatDuration(stats.totalDuration)}
+              </span>
             </div>
-          )}
-
-          <div className="px-6 py-5">
-            {/* 结果提示 */}
-            {!loading && assets.length > 0 && (
-              <p className="mb-3 text-[11.5px] text-ink-400">
-                {total} 条结果{hasFilter && <button onClick={() => { setSearch(''); setGolden3s(false); setTagIds([]); void load('', false, []); }} className="ml-2 text-forest-600 hover:underline">清除筛选</button>}
-              </p>
-            )}
-
-            {loading && assets.length === 0 ? (
-              <div className="flex items-center justify-center gap-2 py-24 text-ink-400">
-                <Loader2 size={16} className="animate-spin" />
-                加载中…
-              </div>
-            ) : assets.length > 0 ? (
-              <motion.div layout className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                <AnimatePresence mode="popLayout">
-                  {assets.map((a, i) => (
-                    <motion.div
-                      key={a.id}
-                      layout
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      transition={{ duration: 0.25, delay: Math.min(i * 0.02, 0.3) }}
-                    >
-                      <AssetCard asset={a} onOpen={openAsset} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            ) : (
-              emptyState
-            )}
           </div>
         </div>
+      )}
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        {/* 结果提示 */}
+        {!loading && assets.length > 0 && (
+          <p className="mb-3 text-[11.5px] text-ink-400">
+            {total} 条结果
+            {hasFilter && (
+              <button onClick={clearFilters} className="ml-2 text-forest-600 hover:underline">
+                清除筛选
+              </button>
+            )}
+          </p>
+        )}
+
+        {loading && assets.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-24 text-ink-400">
+            <Loader2 size={16} className="animate-spin" />
+            加载中…
+          </div>
+        ) : assets.length > 0 ? (
+          <motion.div layout className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <AnimatePresence mode="popLayout">
+              {assets.map((a, i) => (
+                <motion.div
+                  key={a.id}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.25, delay: Math.min(i * 0.02, 0.3) }}
+                >
+                  <AssetCard asset={a} onOpen={openAsset} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        ) : (
+          emptyState
+        )}
       </div>
     </div>
   );
 }
+
 
 function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
@@ -177,5 +167,3 @@ function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string
     </div>
   );
 }
-
-export { thumbUrl };
